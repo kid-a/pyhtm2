@@ -17,6 +17,7 @@ def transpose(array):
     """ Transpose an array."""
     return np.transpose(array)
 
+
 def normalize_over_rows(array):
     """Normalize a vector such that the elements of each row sum up to 1."""
     return np.transpose(

@@ -5,7 +5,7 @@ import pytest
 import utils
 
 def make_random_array():
-    (rows, cols) = (random.randint(1, 10000), random.randint(1, 10000))    
+    (rows, cols) = (random.randint(1, 1000), random.randint(1, 1000))    
     array = np.random.random((rows, cols))
     return array
 
