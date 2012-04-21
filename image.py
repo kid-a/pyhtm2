@@ -23,23 +23,24 @@ def save(image, path):
 def make_training_seq(uImage, uLayer, uWindowSize=(4,4)):
     """Make a training sequence out of an image."""
     sequence = []
+    temporal_gaps = [0]
 
     if uLayer == layer.ENTRY:
-
-        ## extract the bounding box
+        ## crop the foreground object
         image = uImage[np.any(uImage - WHITE, 1),:]
         image = image[:,np.any(image - WHITE, 0)]
-
-        ## now, pad the image with white space
         (rows, cols) = image.shape
 
+        ## now, pad the image with white space
         image = np.hstack((WHITE * np.ones((rows, uWindowSize[1])),
                            image,
                            WHITE * np.ones((rows, uWindowSize[1]))))
 
-        image = np.vstack((WHITE * np.ones((uWindowSize[0], cols + 2 * uWindowSize[1])),
+        image = np.vstack((WHITE * np.ones((uWindowSize[0], 
+                                            cols + 2 * uWindowSize[1])),
                            image,
-                           WHITE * np.ones((uWindowSize[0], cols + 2 * uWindowSize[1]))))
+                           WHITE * np.ones((uWindowSize[0], 
+                                            cols + 2 * uWindowSize[1]))))
 
         ## perform the scans
         (rows, cols) = image.shape        
@@ -56,6 +57,10 @@ def make_training_seq(uImage, uLayer, uWindowSize=(4,4)):
 
             horizontal_sequence.reverse()
 
+        ## mark the transition between the two scans
+        ## as a temporal gap
+        temporal_gaps = [len(sequence)]
+
         ## vertical scan
         horizontal_sequence = range(cols - uWindowSize[1] + 1)
         horizontal_sequence.reverse()
@@ -66,24 +71,45 @@ def make_training_seq(uImage, uLayer, uWindowSize=(4,4)):
                 sequence.append(image[i:(i + uWindowSize[0]), 
                                       j:(j + uWindowSize[1])])
 
-                vertical_sequence.reverse()
-                
-    elif uLayer == layer.INTERMEDIATE:
-        pass
-    
-    elif uLayer == layer.OUTPUT:
-        pass
+            vertical_sequence.reverse()
 
-    return sequence
+        return (sequence, temporal_gaps)
+
+    else:
+        ## crop the foreground object
+        (rows, cols) = uImage.shape
+        image = uImage[np.any(uImage - WHITE, 1),:]
+        image = image[:,np.any(image - WHITE, 0)]
+        (foreground_rows, foreground_cols) = image.shape
+        
+        ## now, put the foreground object in the lower-left corner
+        image = np.hstack((WHITE * np.ones((rows, cols - foreground_cols)),
+                           image))
+        
+        image = np.vstack((WHITE * np.ones((rows - foreground_rows, cols)),
+                           image))
+
+        ## !FIXME implement the scan
+        
+        if uLayer == layer.OUTPUT:
+            return (sequence, temporal_gaps)
+                
+        elif uLayer == layer.INTERMEDIATE:
+            return (sequence, temporal_gaps)
 
 
 if __name__ == "__main__":
-    i = read("data_sets/train/2/1.bmp")
-    sequence = make_training_seq(i, 0)
+    ## some tests
+    i = read("data_sets/train/1/1.bmp")
+    (sequence, temporal_gaps) = make_training_seq(i, layer.ENTRY)
     
-    # i = 0
-    # for s in sequence:
-    #     save(s, 'im' + str(i) + '.bmp')
-    #     i += 1
+    print temporal_gaps
+    
+    i = 0
+    for s in sequence:
+        save(s, 'im' + str(i) + '.bmp')
+        i += 1
+
+    ##(sequence, temporal_gaps) = make_training_seq(i, layer.INTERMEDIATE)
 
     
