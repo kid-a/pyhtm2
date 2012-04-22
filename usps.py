@@ -24,13 +24,13 @@ def save(image, path):
     i = i.convert("L")
     i.save(path)
 
+
 def crop(image):
     """Extracts the foreground objects out of an image."""
     image = image[np.any(image - WHITE, 1),:]
     image = image[:,np.any(image - WHITE, 0)]
     return image
     
-
 
 def make_training_seq(uImage, uLayer, uWindowSize=(4,4)):
     """Make a training sequence out of an image."""
@@ -180,18 +180,36 @@ def make_training_seq(uImage, uLayer, uWindowSize=(4,4)):
 
 
 if __name__ == "__main__":
-    ## some tests
-    #i = read("data_sets/train/5/41.bmp")
-    i = WHITE * np.ones((24,24))
-    i[0,0] = BLACK
+    # ## some tests
+    # #i = read("data_sets/train/5/41.bmp")
+    # i = WHITE * np.ones((24,24))
+    # i[0,0] = BLACK
     
-    # (sequence, temporal_gaps) = make_training_seq(i, layer.ENTRY)
-    (sequence, temporal_gaps) = make_training_seq(i, layer.INTERMEDIATE)
+    # # (sequence, temporal_gaps) = make_training_seq(i, layer.ENTRY)
+    # (sequence, temporal_gaps) = make_training_seq(i, layer.INTERMEDIATE)
     
-    print temporal_gaps
+    # print temporal_gaps
     
-    i = 0
-    for s in sequence:
-        save(s, 'im' + str(i) + '.bmp')
-        i += 1
-        
+    # i = 0
+    # for s in sequence:
+    #     save(s, 'im' + str(i) + '.bmp')
+    #     i += 1
+
+
+
+    import os
+    import time
+    
+    t0 = time.time()
+
+    sequences = []
+    basepath = 'data_sets/train/'
+    numbers = os.listdir(basepath)
+    for n in numbers:
+        for e in os.listdir(basepath + n):
+            i = read(basepath + n + '/' + e)
+            (s,t) = make_training_seq(i, layer.INTERMEDIATE)
+            sequences.extend(s)
+
+    print time.time() - t0, "seconds"
+    print len(sequences)
