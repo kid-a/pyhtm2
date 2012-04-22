@@ -24,6 +24,13 @@ def save(image, path):
     i = i.convert("L")
     i.save(path)
 
+def crop(image):
+    """Extracts the foreground objects out of an image."""
+    image = image[np.any(image - WHITE, 1),:]
+    image = image[:,np.any(image - WHITE, 0)]
+    return image
+    
+
 
 def make_training_seq(uImage, uLayer, uWindowSize=(4,4)):
     """Make a training sequence out of an image."""
@@ -32,8 +39,7 @@ def make_training_seq(uImage, uLayer, uWindowSize=(4,4)):
 
     if uLayer == layer.ENTRY:
         ## crop the foreground object
-        image = uImage[np.any(uImage - WHITE, 1),:]
-        image = image[:,np.any(image - WHITE, 0)]
+        image = crop(uImage)
         (rows, cols) = image.shape
 
         ## now, pad the image with white space
@@ -83,8 +89,7 @@ def make_training_seq(uImage, uLayer, uWindowSize=(4,4)):
     else: ## uLayer == layer.INTERMEDIATE | layer.OUTPUT
         ## crop the foreground object
         (rows, cols) = uImage.shape
-        image = uImage[np.any(uImage - WHITE, 1),:]
-        image = image[:,np.any(image - WHITE, 0)]
+        image = crop(uImage)
         (foreground_rows, foreground_cols) = image.shape
                 
         ## now, put the foreground object in the lower-left corner
@@ -131,8 +136,7 @@ def make_training_seq(uImage, uLayer, uWindowSize=(4,4)):
         temporal_gaps.append(len(sequence))
 
         ## crop the image, again
-        image = uImage[np.any(uImage - WHITE, 1),:]
-        image = image[:,np.any(image - WHITE, 0)]
+        image = crop(uImage)
         (foreground_rows, foreground_cols) = image.shape
                 
         ## now, put the foreground object in the lower-left corner, again
