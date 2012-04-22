@@ -64,7 +64,7 @@ def make_training_seq(uImage, uLayer, uWindowSize=(4,4)):
 
         ## mark the transition between the two scans
         ## as a temporal gap
-        temporal_gaps = [len(sequence)]
+        temporal_gaps.append(len(sequence))
 
         ## vertical scan
         horizontal_sequence = range(cols - uWindowSize[1] + 1)
@@ -80,7 +80,7 @@ def make_training_seq(uImage, uLayer, uWindowSize=(4,4)):
 
         return (sequence, temporal_gaps)
 
-    else:
+    else: ## uLayer == layer.INTERMEDIATE | layer.OUTPUT
         ## crop the foreground object
         (rows, cols) = uImage.shape
         image = uImage[np.any(uImage - WHITE, 1),:]
@@ -126,9 +126,53 @@ def make_training_seq(uImage, uLayer, uWindowSize=(4,4)):
                         
         if uLayer == layer.OUTPUT:
             return (sequence, temporal_gaps)
+
+        ## mark the transition between the two scans as a temporal gap
+        temporal_gaps.append(len(sequence))
+
+        ## crop the image, again
+        image = uImage[np.any(uImage - WHITE, 1),:]
+        image = image[:,np.any(image - WHITE, 0)]
+        (foreground_rows, foreground_cols) = image.shape
                 
-        elif uLayer == layer.INTERMEDIATE:
-            return (sequence, temporal_gaps)
+        ## now, put the foreground object in the lower-left corner, again
+        image = np.hstack((WHITE * np.ones((foreground_rows, cols - foreground_cols)),
+                           image))
+        
+        image = np.vstack((WHITE * np.ones((rows - foreground_rows, cols)),
+                           image))
+
+        ## vertical scan
+        direction = UP
+
+        while True:
+            while True:
+                sequence.append(image)
+
+                if direction == UP:
+                    ## inner while termination condition
+                    if abs(np.sum(image[0,:] - WHITE)) > 0: break
+                    
+                    ## move the foreground object left
+                    image = np.vstack((image[1:,:], WHITE * np.ones((1, cols))))
+
+                else: ## direction is DOWN
+                    ## inner while termination condition
+                    if abs(np.sum(image[-1,:] - WHITE)) > 0: break
+
+                    ## move the foreground object right
+                    image = np.vstack((WHITE * np.ones((1, cols)), image[:-1,:]))
+                
+            ## outer loop termination condition
+            if abs(np.sum(image[:,0] - WHITE)) > 0: break
+            
+            ## move the foreground object LEFT
+            image = np.hstack((image[:,1:], WHITE * np.ones((rows, 1))))
+
+            ## invert the direction
+            direction = not direction
+
+        return (sequence, temporal_gaps)
 
 
 if __name__ == "__main__":
