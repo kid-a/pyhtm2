@@ -9,7 +9,7 @@ test:
 	$(TEST)
 
 clean:
-	-rm *.pyc
+	-rm *.pyc *.bmp
 
 clearbak:
 	-rm *~

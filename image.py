@@ -6,6 +6,11 @@ import layer
 WHITE = 255
 BLACK = 0
 
+LEFT = 0
+RIGHT = 1
+UP = 0
+DOWN = 1
+
 
 def read(path):
     """Reads an image, given its path. Returns the matrix."""
@@ -81,16 +86,44 @@ def make_training_seq(uImage, uLayer, uWindowSize=(4,4)):
         image = uImage[np.any(uImage - WHITE, 1),:]
         image = image[:,np.any(image - WHITE, 0)]
         (foreground_rows, foreground_cols) = image.shape
-        
+                
         ## now, put the foreground object in the lower-left corner
-        image = np.hstack((WHITE * np.ones((rows, cols - foreground_cols)),
+        image = np.hstack((WHITE * np.ones((foreground_rows, cols - foreground_cols)),
                            image))
         
         image = np.vstack((WHITE * np.ones((rows - foreground_rows, cols)),
                            image))
+                
+        ## horizontal scan
+        direction = LEFT
 
-        ## !FIXME implement the scan
-        
+        while True:
+            while True:
+                sequence.append(image)
+
+                if direction == LEFT:
+                    ## inner while termination condition
+                    if abs(np.sum(image[:,0] - WHITE)) > 0: break
+                    
+                    ## move the foreground object left
+                    image = np.hstack((image[:,1:], WHITE * np.ones((rows, 1))))
+
+                else: ## direction is RIGHT
+                    ## inner while termination condition
+                    if abs(np.sum(image[:,-1] - WHITE)) > 0: break
+
+                    ## move the foreground object right
+                    image = np.hstack((WHITE * np.ones((rows, 1)), image[:,:-1]))
+                
+            ## outer loop termination condition
+            if abs(np.sum(image[0,:] - WHITE)) > 0: break
+            
+            ## move the foreground object up
+            image = np.vstack((image[1:,:], WHITE * np.ones((1, cols))))
+
+            ## invert the direction
+            direction = not direction
+                        
         if uLayer == layer.OUTPUT:
             return (sequence, temporal_gaps)
                 
@@ -100,8 +133,12 @@ def make_training_seq(uImage, uLayer, uWindowSize=(4,4)):
 
 if __name__ == "__main__":
     ## some tests
-    i = read("data_sets/train/1/1.bmp")
-    (sequence, temporal_gaps) = make_training_seq(i, layer.ENTRY)
+    #i = read("data_sets/train/5/41.bmp")
+    i = WHITE * np.ones((24,24))
+    i[0,0] = BLACK
+    
+    # (sequence, temporal_gaps) = make_training_seq(i, layer.ENTRY)
+    (sequence, temporal_gaps) = make_training_seq(i, layer.INTERMEDIATE)
     
     print temporal_gaps
     
@@ -109,7 +146,4 @@ if __name__ == "__main__":
     for s in sequence:
         save(s, 'im' + str(i) + '.bmp')
         i += 1
-
-    ##(sequence, temporal_gaps) = make_training_seq(i, layer.INTERMEDIATE)
-
-    
+        
