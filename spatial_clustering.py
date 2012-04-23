@@ -3,12 +3,22 @@ import utils
 import network
 
 
+def compute_widx(msg):
+    """Compute a widx, out of an input message."""
+    widx = []
+    for m in msg: widx.append(np.argmax(m))
+    return np.array(widx)
+
+def widx_distance(diff):
+    return (diff != 0).sum ()
+
+
 class SpatialPooler(object):
+    """Implements the algorithms for clustering coincidences."""
     def __init__(self, uThreshold, uTransitionMemory, *args, **kwargs):
         self.threshold = uThreshold
         self.transition_memory = uTransitionMemory
     
-
     def train_node(self, uNode, uTemporalGap=False):
         """Train a node on the current input."""
         ## select the active threshold
@@ -60,61 +70,146 @@ class EntrySpatialPooler(SpatialPooler):
                 uNode.TAM = utils.inc_rows_cols(uNode.TAM)
                 
             ## increment the seen vector
+                uNode.seen[uNode.k] += 1
+
+
+class IntermediateSpatialPooler(SpatialPooler):
+    def select_active_coinc(self, uNode):
+        """Given a node, selects its current active coincidence."""
+        ## if processing the first input pattern,
+        ## immediately make a new coincidence and return
+        if uNode.coincidences.size == 0:
+            uNode.coincidences = np.array([compute_widx(uNode.input_msg)])
+            uNode.k = 0
+            uNode.seen = [1]
+            uNode.TAM = np.array([[0]])
+            
+        else:
+            ## compute the distance of each coincidence from the
+            ## given input
+            w =compute_widx(uNode.input_msg)
+            distances = np.apply_along_axis(widx_distance, 1,
+                                            (uNode.coincidences - w))
+            uNode.k = np.argmin(distances)
+            minimum = distances[uNode.k]
+            
+            ## if the closest coincidence is not close enough,
+            ## make a new coincidence
+            if minimum > self.threshold:
+                uNode.coincidences = np.vstack((uNode.coincidences, w))
+                (uNode.k, _) = uNode.coincidences.shape
+                uNode.k -= 1
+                uNode.seen = np.hstack((uNode.seen, 0))
+
+                ## resize TAM
+                uNode.TAM = utils.inc_rows_cols(uNode.TAM)
+                
+            ## increment the seen vector
             uNode.seen[uNode.k] += 1
 
 
+class OutputSpatialPooler(SpatialPooler):
+    def train_node(self, uNode, uTemporalGap=False):
+        """Train a node on the current input."""
+        ## select the active threshold
+        self.select_active_coinc(uNode)
+        
+        ## !FIXME update the PCW matrix
+
+
 if __name__ == "__main__":
-    n = network.Node()
-    s = EntrySpatialPooler(0, 5)
-
-    n.input_msg = np.array([1,2,3,4])
-    s.train_node(n)
+    # print widx_distance(np.array([1,2,3,4]), np.array([0,0,0,0]))
+    # print widx_distance(np.array([1,2,3,4]), np.array([1,2,3,4]))
     
-    print n.coincidences
-    print n.seen
-    print n.TAM
-    print n.k
-    print n.k_prev
-    print
+    ## train intermediate node
+    # n = network.Node()
+    # s = IntermediateSpatialPooler(0, 5)
+    # n.input_msg = [ np.array([1,2,3,4]),
+    #                 np.array([4,5,6]),
+    #                 np.array([2,3,0.1]) ]
 
-    s.train_node(n)
+    # s.train_node(n)
 
-    print n.coincidences
-    print n.seen
-    print n.TAM
-    print n.k
-    print n.k_prev
-    print
+    # print n.coincidences
+    # print n.seen
+    # print n.TAM
+    # print n.k
+    # print n.k_prev
+    # print
 
-    n.input_msg = np.array([0,0,0,0])
-    s.train_node(n)
+    # s.train_node(n)
 
-    print n.coincidences
-    print n.seen
-    print n.TAM
-    print n.k
-    print n.k_prev
-    print
+    # print n.coincidences
+    # print n.seen
+    # print n.TAM
+    # print n.k
+    # print n.k_prev
+    # print
 
-    n.input_msg = np.array([1,1,1,1])
-    s.train_node(n)
+    # n.input_msg = [ np.array([4,3,2,1]),
+    #                 np.array([6,5,4]),
+    #                 np.array([3,2,0.1]) ]
+    # s.train_node(n)
+
+    # print n.coincidences
+    # print n.seen
+    # print n.TAM
+    # print n.k
+    # print n.k_prev
+    # print
+
+
+
+    ## train entry node
+    # n = network.Node()
+    # s = EntrySpatialPooler(0, 5)
+    # n.input_msg = np.array([1,2,3,4])
+    # s.train_node(n)
+    # print n.coincidences
+    # print n.seen
+    # print n.TAM
+    # print n.k
+    # print n.k_prev
+    # print
+
+    # s.train_node(n)
+
+    # print n.coincidences
+    # print n.seen
+    # print n.TAM
+    # print n.k
+    # print n.k_prev
+    # print
+
+    # n.input_msg = np.array([0,0,0,0])
+    # s.train_node(n)
+
+    # print n.coincidences
+    # print n.seen
+    # print n.TAM
+    # print n.k
+    # print n.k_prev
+    # print
+
+    # n.input_msg = np.array([1,1,1,1])
+    # s.train_node(n)
     
-    print n.coincidences
-    print n.seen
-    print n.TAM
-    print n.k
-    print n.k_prev
-    print
+    # print n.coincidences
+    # print n.seen
+    # print n.TAM
+    # print n.k
+    # print n.k_prev
+    # print
 
-    n.input_msg = np.array([1,2,3,4])
-    s.train_node(n)
+    # n.input_msg = np.array([1,2,3,4])
+    # s.train_node(n)
     
-    print n.coincidences
-    print n.seen
-    print n.TAM
-    print n.k
-    print n.k_prev
-    print
+    # print n.coincidences
+    # print n.seen
+    # print n.TAM
+    # print n.k
+    # print n.k_prev
+    # print
 
     
     
