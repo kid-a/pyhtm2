@@ -18,12 +18,20 @@ class Layer(object):
     def __init__(self, *args, **kwargs):
         self.nodes = []
         self.spatial_pooler = None
+
+        ## params
         self.sigma = None
-        self.distance_thr = None 
+        self.distance_thr = None
         self.node_sharing = False
         self.transition_memory_size = None
         self.group_max_size = None
         self.group_min_size = None
+        
+    def inference(self):
+        for i in range(self.nodes):
+            for j in range(self.nodes[i]):
+                spatial_pooler.train_node(self.nodes[i][j], uClass, uTemporalGap)
+
         
     def train(self, uClass, uTemporalGap=False):
         if self.node_sharing:  ## train just the first node
