@@ -6,10 +6,19 @@ import numpy as np
 def inc_rows_cols(array):
     """ Adds one row and one column to a given array.
     Fills new fields with zeros."""
-    
-    (rows, cols) = array.shape
-    array = np.hstack((array, np.zeros((rows, 1))))
-    array = np.vstack((array, np.zeros((1, cols + 1))))
+
+    ## conditional needed due to the fact that
+    ## according to numpy, 1xN arrays have just one dimension
+    if len(array.shape) == 1:
+        temp = array[0]
+        array = np.zeros((2, 2))
+        array[0,0] = temp
+
+    else:
+        (rows, cols) = array.shape
+        array = np.hstack((array, np.zeros((rows, 1))))
+        array = np.vstack((array, np.zeros((1, cols + 1))))
+
     return array
     
 
