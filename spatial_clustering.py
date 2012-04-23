@@ -43,8 +43,8 @@ class EntrySpatialPooler(SpatialPooler):
             ## compute the distance of each coincidence from the
             ## given input
             distances = np.apply_along_axis(np.linalg.norm, 1, 
-                                                (uNode.coincidences - uNode.input_msg))
-                ## find the minimum
+                                            (uNode.coincidences - uNode.input_msg))
+            ## find the minimum
             uNode.k = np.argmin(distances)
             minimum = distances[uNode.k]
             
@@ -55,6 +55,7 @@ class EntrySpatialPooler(SpatialPooler):
                 (uNode.k, _) = uNode.coincidences.shape
                 uNode.k -= 1
                 uNode.seen = np.hstack((uNode.seen, 0))
+
                 ## resize TAM
                 uNode.TAM = utils.inc_rows_cols(uNode.TAM)
                 
@@ -86,9 +87,28 @@ if __name__ == "__main__":
     print
 
     n.input_msg = np.array([0,0,0,0])
-
     s.train_node(n)
 
+    print n.coincidences
+    print n.seen
+    print n.TAM
+    print n.k
+    print n.k_prev
+    print
+
+    n.input_msg = np.array([1,1,1,1])
+    s.train_node(n)
+    
+    print n.coincidences
+    print n.seen
+    print n.TAM
+    print n.k
+    print n.k_prev
+    print
+
+    n.input_msg = np.array([1,2,3,4])
+    s.train_node(n)
+    
     print n.coincidences
     print n.seen
     print n.TAM
