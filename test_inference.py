@@ -3,7 +3,7 @@ import random
 import pytest
 
 import inference
-import layer
+import network
 import utils
 
 def make_random_array(length, limit_max=1000):
@@ -38,9 +38,9 @@ def test_dens_over_coinc():
     c = make_random_coincidences(length, how_many_coinc)
     i = make_random_array(length)
 
-    ## test for layer.ENTRY
+    ## test for network.ENTRY
     ##
-    y = inference.dens_over_coinc(c, i, layer.ENTRY)
+    y = inference.dens_over_coinc(c, i, network.ENTRY)
     
     ## size of y equals the number of coinc
     assert y.shape[0] == how_many_coinc
@@ -52,11 +52,11 @@ def test_dens_over_coinc():
         
         assert expected - y[j] < EPSILON
 
-    ## test for layer.INTERMEDIATE and layer.OUTPUT
+    ## test for network.INTERMEDIATE and network.OUTPUT
     ##
     c = make_random_coincidences(length, how_many_coinc, length - 1)
     i = make_random_lambda(length, how_many_coinc - 1)
-    y = inference.dens_over_coinc(c, i, layer.INTERMEDIATE)
+    y = inference.dens_over_coinc(c, i, network.INTERMEDIATE)
     
     ## size of y equals the number of coinc
     assert y.shape[0] == how_many_coinc

@@ -1,7 +1,7 @@
 from PIL import Image
 import numpy as np
 
-import layer
+import network
 
 WHITE = 255
 BLACK = 0
@@ -37,7 +37,7 @@ def make_training_seq(uImage, uLayer, uWindowSize=(4,4)):
     sequence = []
     temporal_gaps = [0]
 
-    if uLayer == layer.ENTRY:
+    if uLayer == network.ENTRY:
         ## crop the foreground object
         image = crop(uImage)
         (rows, cols) = image.shape
@@ -86,7 +86,7 @@ def make_training_seq(uImage, uLayer, uWindowSize=(4,4)):
 
         return (sequence, temporal_gaps)
 
-    else: ## uLayer == layer.INTERMEDIATE | layer.OUTPUT
+    else: ## uLayer == network.INTERMEDIATE | network.OUTPUT
         ## crop the foreground object
         (rows, cols) = uImage.shape
         image = crop(uImage)
@@ -129,7 +129,7 @@ def make_training_seq(uImage, uLayer, uWindowSize=(4,4)):
             ## invert the direction
             direction = not direction
                         
-        if uLayer == layer.OUTPUT:
+        if uLayer == network.OUTPUT:
             return (sequence, temporal_gaps)
 
         ## mark the transition between the two scans as a temporal gap
@@ -185,8 +185,8 @@ if __name__ == "__main__":
     # i = WHITE * np.ones((24,24))
     # i[0,0] = BLACK
     
-    # # (sequence, temporal_gaps) = make_training_seq(i, layer.ENTRY)
-    # (sequence, temporal_gaps) = make_training_seq(i, layer.INTERMEDIATE)
+    # # (sequence, temporal_gaps) = make_training_seq(i, network.ENTRY)
+    # (sequence, temporal_gaps) = make_training_seq(i, network.INTERMEDIATE)
     
     # print temporal_gaps
     
@@ -208,7 +208,7 @@ if __name__ == "__main__":
     for n in numbers:
         for e in os.listdir(basepath + n):
             i = read(basepath + n + '/' + e)
-            (s,t) = make_training_seq(i, layer.INTERMEDIATE)
+            (s,t) = make_training_seq(i, network.INTERMEDIATE)
             sequences.extend(s)
 
     print time.time() - t0, "seconds"

@@ -1,13 +1,13 @@
 ## the inference module
 
-import layer
+import network
 import numpy as np
 
 
 def dens_over_coinc(uCoincidences, uCurrentInput, 
-                    uCurrentLayer=layer.INTERMEDIATE, uSigma=1):
+                    uCurrentLayer=network.INTERMEDIATE, uSigma=1):
 
-    if uCurrentLayer == layer.ENTRY:
+    if uCurrentLayer == network.ENTRY:
         y = np.apply_along_axis(np.linalg.norm, 1, (uCoincidences - uCurrentInput))
         y = np.exp(- np.power(y, 2) / np.power(uSigma, 2))
         
@@ -19,7 +19,7 @@ def dens_over_coinc(uCoincidences, uCurrentInput,
         for i in range(rows):
             selected_coincidences = np.array([])
             
-            for j in range(cols):                
+            for j in range(cols):
             
                 selected_coincidences = \
                     np.append(selected_coincidences, 
