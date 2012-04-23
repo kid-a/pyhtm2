@@ -34,13 +34,28 @@ class Layer(object):
 
         
     def train(self, uClass, uTemporalGap=False):
-        if self.node_sharing:  ## train just the first node
+        if self.node_sharing:  
+            ## train just the first node
             spatial_pooler.train_node(self.nodes[0][0], uClass, uTemporalGap)
             
         else: ## train all nodes in the layer
             for i in range(self.nodes):
                 for j in range(self.nodes[i]):
                     spatial_pooler.train_node(self.nodes[i][j], uClass, uTemporalGap)
+                    
+    def finalize_training(self):
+        if self.node_sharing:
+            ## finalize just the first node
+            temporal_pooler.finalize_training(self.nodes[0][0])
+
+            ## then copy its state
+            ## clone state
+            ## !FIXME implement cloning
+            
+        else:
+            for i in range(self.nodes):
+                for j in range(self.nodes[i]):
+                    temporal_pooler.finalize_training(self.nodes[i][j])
 
 
 class Node(object):
@@ -54,6 +69,8 @@ class Node(object):
         self.k = None
         self.k_prev = []
         
+        ## !FIXME a clone method here?
+        
 
 class OutputNode(object):
     def __init__(self, *args, **kwargs):
@@ -63,6 +80,8 @@ class OutputNode(object):
         self.k = None
         self.cls_prior_prob = np.array([])
         self.PCW = np.array([[]])
+
+        ## !FIXME a clone method here?
 
 
 class HTMBuilder(object):
