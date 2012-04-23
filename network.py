@@ -1,4 +1,3 @@
-
 ## layer type definitions
 ENTRY = 0
 INTERMEDIATE = 1
@@ -24,10 +23,19 @@ class Node(object):
     def __init__(self, *args, **kwargs):
         self.coincidences = None ## np.array
         self.input_msg = None    ## np.array
-        self.layer = None        ## macro
         self.seen = None         ## np.array
         self.TAM = None          ## np.array
+        self.k = None            ## integer
+        self.k_prev = []         ## list of integers
+    
+    
+class EntryNode(object):
+    pass
 
 
 class HTMBuilder(object):
-    pass
+    def __init__(self, *args, **kwargs):
+        self.network = Network()
+        
+    def make_layer(self, params):
+        pass
