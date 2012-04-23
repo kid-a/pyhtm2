@@ -4,32 +4,32 @@ import network
 
 
 class SpatialPooler(object):
-    def select_active_coinc(self, uNode): pass
-
-
-class EntrySpatialPooler(SpatialPooler):
-    def __init__(self, *args, **kwargs):
-        self.threshold = None
-        self.transition_memory = None
+    def __init__(self, uThreshold, uTransitionMemory, *args, **kwargs):
+        self.threshold = uThreshold
+        self.transition_memory = uTransitionMemory
+    
 
     def train_node(self, uNode, uTemporalGap=False):
         """Train a node on the current input."""
         ## select the active threshold
-        self.select_active_coinc(uNode, self.threshold)
+        self.select_active_coinc(uNode)
     
         ## then, update the temporal activation matrix (TAM)
-        if not uTemporalGap:            
-            for t in range(uNode.k_prev):
+        if not uTemporalGap:
+            for t in range(len(uNode.k_prev)):
                 uNode.TAM[uNode.k_prev[t], uNode.k] = \
                     uNode.TAM[uNode.k_prev[t], uNode.k] + 1 + self.transition_memory - (t + 1)
         
         ## last, add k to the k_prev list
-        uNode.k_prev.insert(0, k)
+        uNode.k_prev.insert(0, uNode.k)
         if len(uNode.k_prev) > self.transition_memory:
-            uNode.k_prev = uNode.k_prev[1:]
+            uNode.k_prev = uNode.k_prev[1:]        
         
-    
-    def select_active_coinc(self, uNode, uThreshold):
+    def select_active_coinc(self, uNode): pass
+
+
+class EntrySpatialPooler(SpatialPooler):
+    def select_active_coinc(self, uNode):
         """Given a node, selects its current active coincidence."""
         ## if this is the first input pattern,
         ## immediately make a new coincidence and return        
@@ -37,17 +37,24 @@ class EntrySpatialPooler(SpatialPooler):
             uNode.coincidences = uNode.input_msg
             uNode.k = 0
             uNode.seen = [1]
-            uNode.TAM = [1]
+            uNode.TAM = np.array([[0]])
             
         else:
             ## compute the distance of each coincidence from the
             ## given input
-            distances = np.apply_along_axis(np.linalg.norm, 1, 
-                                            (uNode.coincidences - uNode.input_msg))
-            
-            ## find the minimum
-            uNode.k = np.argmin(distances)
-            minimum = distances[uNode.k]
+            if len(uNode.coincidences.shape) == 1:
+                distance = np.linalg.norm(uNode.coincidences - uNode.input_msg)
+                uNode.k = 0
+                minimum = distance
+                print "Distance", distance
+                print "Threshold", self.threshold
+                
+            else:
+                distances = np.apply_along_axis(np.linalg.norm, 1, 
+                                                (uNode.coincidences - uNode.input_msg))
+                ## find the minimum
+                uNode.k = np.argmin(distances)
+                minimum = distances[uNode.k]
             
             ## if the closest coincidence is not close enough,
             ## make a new coincidence
@@ -60,4 +67,43 @@ class EntrySpatialPooler(SpatialPooler):
                 uNode.TAM = utils.inc_rows_cols(uNode.TAM)
                 
             ## increment the seen vector
-            uNode.seen[k] += 1
+            uNode.seen[uNode.k] += 1
+
+
+if __name__ == "__main__":
+    n = network.Node()
+    s = EntrySpatialPooler(0, 5)
+
+    n.input_msg = np.array([1,2,3,4])
+    s.train_node(n)
+    
+    print n.coincidences
+    print n.seen
+    print n.TAM
+    print n.k
+    print n.k_prev
+    print
+
+    s.train_node(n)
+
+    print n.coincidences
+    print n.seen
+    print n.TAM
+    print n.k
+    print n.k_prev
+    print
+
+    n.input_msg = np.array([0,0,0,0])
+
+    s.train_node(n)
+
+    print n.coincidences
+    print n.seen
+    print n.TAM
+    print n.k
+    print n.k_prev
+    print
+
+    
+    
+    

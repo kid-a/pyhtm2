@@ -1,3 +1,5 @@
+import numpy as np
+
 ## layer type definitions
 ENTRY = 0
 INTERMEDIATE = 1
@@ -21,12 +23,12 @@ class Layer(object):
 
 class Node(object):
     def __init__(self, *args, **kwargs):
-        self.coincidences = None ## np.array
-        self.input_msg = None    ## np.array
-        self.seen = None         ## np.array
-        self.TAM = None          ## np.array
-        self.k = None            ## integer
-        self.k_prev = []         ## list of integers
+        self.coincidences = np.array([[]])
+        self.input_msg = np.array([])
+        self.seen = np.array([])
+        self.TAM = np.array([[]])
+        self.k = None
+        self.k_prev = []
     
     
 class EntryNode(object):
