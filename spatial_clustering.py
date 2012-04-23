@@ -31,10 +31,10 @@ class SpatialPooler(object):
 class EntrySpatialPooler(SpatialPooler):
     def select_active_coinc(self, uNode):
         """Given a node, selects its current active coincidence."""
-        ## if this is the first input pattern,
+        ## if processing the first input pattern,
         ## immediately make a new coincidence and return        
         if uNode.coincidences.size == 0:
-            uNode.coincidences = uNode.input_msg
+            uNode.coincidences = np.array([uNode.input_msg])
             uNode.k = 0
             uNode.seen = [1]
             uNode.TAM = np.array([[0]])
@@ -42,19 +42,11 @@ class EntrySpatialPooler(SpatialPooler):
         else:
             ## compute the distance of each coincidence from the
             ## given input
-            if len(uNode.coincidences.shape) == 1:
-                distance = np.linalg.norm(uNode.coincidences - uNode.input_msg)
-                uNode.k = 0
-                minimum = distance
-                print "Distance", distance
-                print "Threshold", self.threshold
-                
-            else:
-                distances = np.apply_along_axis(np.linalg.norm, 1, 
+            distances = np.apply_along_axis(np.linalg.norm, 1, 
                                                 (uNode.coincidences - uNode.input_msg))
                 ## find the minimum
-                uNode.k = np.argmin(distances)
-                minimum = distances[uNode.k]
+            uNode.k = np.argmin(distances)
+            minimum = distances[uNode.k]
             
             ## if the closest coincidence is not close enough,
             ## make a new coincidence
