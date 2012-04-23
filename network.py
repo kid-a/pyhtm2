@@ -47,9 +47,10 @@ class Node(object):
     def __init__(self, *args, **kwargs):
         self.coincidences = np.array([[]])
         self.input_msg = np.array([])
+        self.output_msg = np.array([])
         self.seen = np.array([])
         self.TAM = np.array([[]])
-        self.PCG = np.arry([[]])
+        self.PCG = np.array([[]])
         self.k = None
         self.k_prev = []
         
@@ -58,6 +59,7 @@ class OutputNode(object):
     def __init__(self, *args, **kwargs):
         self.coincidences = np.array([[]])
         self.input_msg = np.array([])
+        self.output_msg = np.array([])
         self.k = None
         self.cls_prior_prob = np.array([])
         self.PCW = np.array([[]])
