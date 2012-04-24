@@ -108,8 +108,71 @@ class OutputNode(object):
 
 
 class HTMBuilder(object):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, params):
+        self.network_spec = params
         self.network = Network()
+
+    def build(self):
+        """Build the network."""
+        for i in range(len(self.network_spec)):
+            if i == 0:
+                l = self.make_layer(self.network_spec[i], ENTRY)
+            elif i == (len(self.network_spec) - 1):
+                l = self.make_layer(self.network_spec[i], OUTPUT)
+            else:
+                l = self.make_layer(self.network_spec[i], INTERMEDIATE)
+
+        self.network.layers.append(l)
         
-    def make_layer(self, params):
-        pass
+    def make_layer(self, uParams, uType):
+        l = Layer()
+        
+        if uType == ENTRY:
+            for i in range(uParams['shape'][0] * uParams['shape'][1]):
+                l.nodes.append(Node())
+            
+            l.sigma = uParams['sigma']
+            l.distance_thr = uParams['distance_thr']
+            l.node_sharing = uParams['node_sharing']
+            l.transition_memory_size = uParams['transition_memory_size']
+            l.group_max_size = uParams['group_max_size']
+            l.group_min_size = uParams['group_min_size']
+
+        elif uType == INTERMEDIATE:
+            for i in range(uParams['shape'][0] * uParams['shape'][1]):
+                l.nodes.append(Node())
+
+            l.distance_thr = uParams['distance_thr']
+            l.node_sharing = uParams['node_sharing']
+            l.transition_memory_size = uParams['transition_memory_size']
+            l.group_max_size = uParams['group_max_size']
+            l.group_min_size = uParams['group_min_size']
+            
+        else: ## uType == OUTPUT
+            l.nodes.append(OutputNode())
+            l.distance_thr = uParams['distance_thr']
+
+
+if __name__ == "__main__":
+    network_spec = [
+        {'shape' : (4,4),
+         'sigma' : 25.0,
+         'distance_thr' : 55.0,
+         'node_sharing' : True,
+         'transition_memory_size' : 5,
+         'group_max_size' : 5,
+         'group_min_size' : 2},
+
+        {'shape' : (2,2),
+         'distance_thr' : 0.0,
+         'node_sharing' : False,
+         'transition_memory_size' : 5,
+         'group_max_size' : 5,
+         'group_min_size' : 2},
+
+        {'distance_thr' : 0.0}]
+    
+    b = HTMBuilder(network_spec)
+    b.build()
+    
+    
