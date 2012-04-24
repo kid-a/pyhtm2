@@ -72,8 +72,15 @@ class TemporalPooler(object):
 
     def compute_PCG(uCoincidencePriors, uTemporalGroups):
         """Compute the PCG matrix."""
-        pass
-    
+        PCG = np.zeros((len(uCoincidencePriors), len(uTemporalGroups)))
+        
+        for i in range(len(uCoincidencePriors)):
+            for j in range(len(uTemporalGroups)):
+                if i in uTemporalGroups[j]:
+                    PCG[i,j] = uCoincidencePriors[i]
+                    
+        return utils.normalize_over_columns(PCG)
+
     def finalize_training(uNode):
         """Finalize a node's traning by computing its temporal groups and its PCG matrix."""
         ## make TAM symmetric
