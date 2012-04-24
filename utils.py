@@ -28,6 +28,16 @@ def normalize_over_cols(array):
     """Normalize a vector such that the elements of each column sum up to 1."""
     return array / np.sum(array, axis=0, dtype=np.double)
 
+def make_symmetric(array):
+    """Make an array symmetric summing up its lower and its upper parts."""
+    (size, size) = array.shape
+    return \
+        np.tril( np.tril(array, -1) + np.transpose(np.triu(array, 1)), -1) + \
+        np.triu( np.transpose(np.tril(array, -1)) + np.triu(array, 1),  1) + \
+        (array * np.eye(size))
+    
+
+
 
 
     
