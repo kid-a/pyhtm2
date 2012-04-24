@@ -1,11 +1,12 @@
 import numpy as np
+import copy
 import utils
 import network
 
 class TemporalPooler(object):
     def __init__(self, uMaxGroupSize, uMinGroupSize, uTopNeighbours):
         self.max_group_size = uMaxGroupSize
-        self.min_group_size = uMinGroupSize
+        self.min_group_size = uMinGroupSize ##!FIXME it is not used
         self.top_neighbours = uTopNeighbours
 
     def select_highest_coincidence(self, uTC, uCoincidences):
@@ -20,21 +21,24 @@ class TemporalPooler(object):
             else: uTC[k] = -1
 
     def top_most_connected(self, uK, uCoincidences, uTAM):
+        """Selects the coincidences that are in a closely temporally connected with uK."""
         most_connected = []
-        uCoincidences.remove(uK)
 
         if len(uCoincidences) == 0:
             return most_connected
         
         connection_levels = uTAM[uK,:]
         
-        while len(most_connected) < self.top_neighbours and len(uCoincidences) != 0:
-            print connection_levels
+        while len(most_connected) < self.top_neighbours and \
+                len(uCoincidences) != 0 and\
+                np.sum(connection_levels) != (-1) * len(connection_levels):
+
             c = np.argmax(connection_levels)
+
             if c in uCoincidences: 
                 most_connected.append(c)
                 uCoincidences.remove(c)
-
+                
             connection_levels[c] = -1
                 
         return most_connected
@@ -43,23 +47,25 @@ class TemporalPooler(object):
     def cluster(self, uTC, uTAM):
         """Implements the greedy temporal clustering algorithm."""
         P = []
-        coincidences = set(range(uTC))
-        Omega = []
+        coincidences = set(range(len(uTC)))
         
         while len(coincidences) > 0:
+            Omega = []
             k = self.select_highest_coincidence(uTC, coincidences)
             coincidences.remove(k)
             Omega.append(k)
+            pos = len(Omega) - 1
             
             while pos <= (len(Omega) - 1) and pos < self.max_group_size:
-                k = Omega[k]
-                Omega.extend(self.top_most_connected(k, coincidences, uTAM))
+                k = Omega[pos]
+                most_connected = self.top_most_connected(k, copy.deepcopy(coincidences), uTAM)
+                Omega.extend(most_connected)
+
+                for m in most_connected:
+                    coincidences.remove(m)
+
                 pos += 1
                 
-            ## mark them as assigned
-            for i in range(pos):
-                coincidences.remove(Omega[i])
-            
             P.append(Omega)
             
         return P
@@ -90,7 +96,7 @@ class TemporalPooler(object):
 
 
 if __name__ == "__main__":
-    p = TemporalPooler(10, 5, 1)
+    p = TemporalPooler(5, 3, 1)
     TC = np.array([1,2,3,4])
     coincidences = set([0,1,2,3])    
     
@@ -115,10 +121,26 @@ if __name__ == "__main__":
                     [7,8,9,10],
                     [11,12,13,14]])
     
-    print p.top_most_connected(0,range(4), TAM)
-    #print p.top_most_connected(1,range(4), TAM)
-    #print p.top_most_connected(1,[0,1,2], TAM)
-    #print p.top_most_connected(0, [0], TAM)
+    #print p.top_most_connected(0,[1,2,3], TAM)
+    #print p.top_most_connected(1,[0,2,3], TAM)
+    #print p.top_most_connected(1,[0,2], TAM)
+    #print p.top_most_connected(0, [1], TAM)
+    #print p.top_most_connected(0, [], TAM)
+
+    ## test cluster
+    # TC = np.random.rand(1, 100)
+    # TAM = np.random.rand(100, 100)
+
+    # cluster = p.cluster(TC[0], TAM)
+    # s = 0
+    # for c in cluster:
+    #     s += len(c)
+    #     print len(c)
+        
+    # print "Total coinc:", s
+
+    # for c in cluster:
+    #     print c
 
     
 
