@@ -24,7 +24,7 @@ class InferenceMaker(object):
         return y
 
     def dens_over_groups(self, uY, uPCG):
-        return y * uPCG
+        return uY * uPCG
 
     def inference(self, uNode, uSigma=None):
         y = utils.normalize_over_rows(self.dens_over_coinc(uNode.coincidences,

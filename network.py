@@ -61,6 +61,7 @@ class Layer(object):
 class Node(object):
     def __init__(self, *args, **kwargs):
         self.coincidences = np.array([[]])
+        self.temporal_groups = None
         self.input_msg = np.array([])
         self.output_msg = np.array([])
         self.seen = np.array([])
