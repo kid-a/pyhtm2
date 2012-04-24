@@ -1,4 +1,5 @@
 import numpy as np
+import math
 
 ## layer type definitions
 ENTRY = 0
@@ -10,6 +11,29 @@ class Network(object):
     def __init__(self, *args, **kwargs):
         self.layers = []
         
+    def propagate(self, uFrom, uTo):
+        f = self.layers[uFrom]
+        t = self.layers[uTo]
+        
+        ## reset target layer input messages
+        for i in range(len(t.nodes)):
+            for j in range(len(t.nodes[i])):
+                t.nodes[i][j].input_msg = []
+            
+        if len(t.nodes[0]) == 1: ## if last node
+            for i in range(len(f.nodes)):
+                for j in range(len(f.nodes[i])):
+                    t.nodes[0][0].input_msg.append(f.nodes[i][j].output_msg)
+                    
+        else:
+            for i in range(len(f.nodes)):
+                upper_i = math.floor(i / float(len(t.nodes)))
+            
+                for j in range(len(f.nodes[i])):
+                    upper_j = math.floor(j / float(len(t.nodes[0])))
+                    msg = f.nodes[i][j].output_msg
+                    t.nodes[int(upper_i)][int(upper_j)].input_msg.append(msg)
+
     def train(self):
         pass
 
@@ -121,16 +145,18 @@ class HTMBuilder(object):
                 l = self.make_layer(self.network_spec[i], OUTPUT)
             else:
                 l = self.make_layer(self.network_spec[i], INTERMEDIATE)
-
-        self.network.layers.append(l)
+                
+            self.network.layers.append(l)
         
     def make_layer(self, uParams, uType):
         l = Layer()
         
         if uType == ENTRY:
-            for i in range(uParams['shape'][0] * uParams['shape'][1]):
-                l.nodes.append(Node())
-            
+            for i in range(uParams['shape'][0]):
+                l.nodes.append([])
+                for j in range(uParams['shape'][1]):
+                    l.nodes[i].append(Node())
+                                
             l.sigma = uParams['sigma']
             l.distance_thr = uParams['distance_thr']
             l.node_sharing = uParams['node_sharing']
@@ -139,8 +165,10 @@ class HTMBuilder(object):
             l.group_min_size = uParams['group_min_size']
 
         elif uType == INTERMEDIATE:
-            for i in range(uParams['shape'][0] * uParams['shape'][1]):
-                l.nodes.append(Node())
+            for i in range(uParams['shape'][0]):
+                l.nodes.append([])
+                for j in range(uParams['shape'][1]):
+                    l.nodes[i].append(Node())
 
             l.distance_thr = uParams['distance_thr']
             l.node_sharing = uParams['node_sharing']
@@ -151,6 +179,8 @@ class HTMBuilder(object):
         else: ## uType == OUTPUT
             l.nodes.append(OutputNode())
             l.distance_thr = uParams['distance_thr']
+            
+        return l
 
 
 if __name__ == "__main__":
@@ -175,4 +205,12 @@ if __name__ == "__main__":
     b = HTMBuilder(network_spec)
     b.build()
     
-    
+    n = b.network
+    #print n.layers[0].nodes[3][3]
+
+    for i in range(len(n.layers[0].nodes)):
+        for j in range(len(n.layers[0].nodes[i])):
+            n.layers[0].nodes[i][j].output_msg = np.array([1,2,3,4])
+            
+    n.propagate(0, 1)
+    print n.layers[1].nodes[0][0].input_msg
