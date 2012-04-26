@@ -4,6 +4,7 @@ import math
 from spatial_clustering import EntrySpatialPooler
 from spatial_clustering import IntermediateSpatialPooler
 from spatial_clustering import OutputSpatialPooler
+from temporal_clustering import TemporalPooler
 
 ## layer type definitions
 ENTRY = 0
@@ -63,12 +64,19 @@ class Network(object):
                     t.nodes[int(upper_i)][int(upper_j)].input_msg.append(msg)
 
     def train(self, sequences):
+        
+        ## train first node
         for e in sequences['entry']:
             for i in range(len(self.layers[0].nodes)):
                 for j in range(len(self.layers[0].nodes[i])):
                     self.layers[0].nodes[i][j].input_msg = e.reshape((1, e.size))
 
             self.layers[0].train()
+        
+        ## finalize training
+        self.layers[0].finalize_training()
+            
+        
             
 
             
@@ -89,8 +97,8 @@ class Layer(object):
         self.distance_thr = None
         self.node_sharing = False
         self.transition_memory_size = None
-        self.group_max_size = None
-        self.group_min_size = None
+        self.max_group_size = None
+        self.min_group_size = None
         
     def train(self, uTemporalGap=False):
         if self.node_sharing:  
@@ -98,8 +106,8 @@ class Layer(object):
             self.spatial_pooler.train_node(self.nodes[0][0], uTemporalGap=uTemporalGap)
             
         else: ## train all nodes in the layer
-            for i in range(self.nodes):
-                for j in range(self.nodes[i]):
+            for i in range(len(self.nodes)):
+                for j in range(len(self.nodes[i])):
                     self.spatial_pooler.train_node(self.nodes[i][j], uTemporalGap=uTemporalGap)
                     
     def finalize_training(self):
@@ -108,8 +116,8 @@ class Layer(object):
             self.temporal_pooler.finalize_training(self.nodes[0][0])
 
             ## then copy its state, i.e. coincidences, temporal_groups and PCG
-            for i in range(self.nodes):
-                for j in range(self.nodes[i]):
+            for i in range(len(self.nodes)):
+                for j in range(len(self.nodes[i])):
                     if i == 0 and j == 0: continue
                     self.nodes[i][j].coincidences = self.nodes[0][0].coincidences
                     self.nodes[i][j].temporal_groups = self.nodes[0][0].temporal_groups
@@ -181,25 +189,39 @@ class HTMBuilder(object):
         for i in range(len(self.network_spec)):
             if i == 0:
                 l = self.make_layer(self.network_spec[i], ENTRY)
+
                 l.spatial_pooler = EntrySpatialPooler(
                     self.network_spec[i]['distance_thr'],
                     self.network_spec[i]['transition_memory_size'])
-
+                
+                l.temporal_pooler = TemporalPooler(
+                    self.network_spec[i]['max_group_size'],
+                    self.network_spec[i]['min_group_size'],
+                    self.network_spec[i]['top_neighbours'])
+                                                   
             elif i == (len(self.network_spec) - 1):
                 l = self.make_layer(self.network_spec[i], OUTPUT)
+
                 l.spatial_pooler = OutputSpatialPooler(
                     self.network_spec[i]['distance_thr'])
             else:
                 l = self.make_layer(self.network_spec[i], INTERMEDIATE)
+
                 l.spatial_pooler = IntermediateSpatialPooler(
                     self.network_spec[i]['distance_thr'],
                     self.network_spec[i]['transition_memory_size'])
+
+                l.temporal_pooler = TemporalPooler(
+                    self.network_spec[i]['max_group_size'],
+                    self.network_spec[i]['min_group_size'],
+                    self.network_spec[i]['top_neighbours'])
                 
             self.network.layers.append(l)
         
     def make_layer(self, uParams, uType):
         l = Layer()
         
+        ## !FIXME lots of unuseful params here
         if uType == ENTRY:
             for i in range(uParams['shape'][0]):
                 l.nodes.append([])
@@ -209,9 +231,9 @@ class HTMBuilder(object):
             l.sigma = uParams['sigma']
             #l.distance_thr = uParams['distance_thr']
             l.node_sharing = uParams['node_sharing']
-            l.transition_memory_size = uParams['transition_memory_size']
-            l.group_max_size = uParams['group_max_size']
-            l.group_min_size = uParams['group_min_size']
+            # l.transition_memory_size = uParams['transition_memory_size']
+            # l.max_group_size = uParams['max_group_size']
+            # l.min_group_size = uParams['min_group_size']
 
         elif uType == INTERMEDIATE:
             for i in range(uParams['shape'][0]):
@@ -221,9 +243,9 @@ class HTMBuilder(object):
 
             #l.distance_thr = uParams['distance_thr']
             l.node_sharing = uParams['node_sharing']
-            l.transition_memory_size = uParams['transition_memory_size']
-            l.group_max_size = uParams['group_max_size']
-            l.group_min_size = uParams['group_min_size']
+            # l.transition_memory_size = uParams['transition_memory_size']
+            # l.max_group_size = uParams['max_group_size']
+            # l.min_group_size = uParams['min_group_size']
             
         else: ## uType == OUTPUT
             l.nodes.append(OutputNode())
@@ -239,15 +261,15 @@ if __name__ == "__main__":
          'distance_thr' : 55.0,
          'node_sharing' : True,
          'transition_memory_size' : 5,
-         'group_max_size' : 5,
-         'group_min_size' : 2},
+         'max_group_size' : 5,
+         'min_group_size' : 2},
 
         {'shape' : (2,2),
          'distance_thr' : 0.0,
          'node_sharing' : False,
          'transition_memory_size' : 5,
-         'group_max_size' : 5,
-         'group_min_size' : 2},
+         'max_group_size' : 5,
+         'min_group_size' : 2},
 
         {'distance_thr' : 0.0}]
     

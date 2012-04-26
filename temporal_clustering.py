@@ -59,6 +59,7 @@ class TemporalPooler(object):
         partition = []
         
         while len(graph) > 0:
+            print len(graph)
             (k, tc) = self.pop_highest_coincidence(tc)
             omega = set([k])
             unprocessed = [k]
@@ -104,7 +105,7 @@ class TemporalPooler(object):
             sorted_neighbours = sorted(neighbours, key=lambda x : x[1])
             return map(lambda x : x[0], neighbours[:self.top_neighbours])
 
-    def compute_PCG(uCoincidencePriors, uTemporalGroups):
+    def compute_PCG(self, uCoincidencePriors, uTemporalGroups):
         """Compute the PCG matrix."""
         PCG = np.zeros((len(uCoincidencePriors), len(uTemporalGroups)))
         
@@ -113,9 +114,9 @@ class TemporalPooler(object):
                 if i in uTemporalGroups[j]:
                     PCG[i,j] = uCoincidencePriors[i]
                     
-        return utils.normalize_over_columns(PCG)
+        return utils.normalize_over_cols(PCG)
 
-    def finalize_training(uNode):
+    def finalize_training(self, uNode):
         """Finalize a node's traning by computing its temporal groups and its PCG matrix."""
         ## make TAM symmetric
         norm_TAM = utils.make_symmetric(uNode.TAM)
@@ -130,8 +131,8 @@ class TemporalPooler(object):
         TC = np.dot(coincidence_priors, norm_TAM)
         
         ## do the temporal clustering
-        uNode.temporal_groups = self.cluster(TC, norm_TAM)
-        
+        uNode.temporal_groups = self.greedy_temporal_clustering(TC, norm_TAM)
+                
         ## compute the PCG matrix
         uNode.PCG = self.compute_PCG(coincidence_priors, uNode.temporal_groups)
 

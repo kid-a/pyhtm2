@@ -74,6 +74,8 @@ class EntrySpatialPooler(SpatialPooler):
                 
                 ## increment the seen vector
                 uNode.seen[uNode.k] += 1
+                
+            print uNode.coincidences.shape
 
 
 class IntermediateSpatialPooler(SpatialPooler):
@@ -90,7 +92,7 @@ class IntermediateSpatialPooler(SpatialPooler):
         else:
             ## compute the distance of each coincidence from the
             ## given input
-            w =compute_widx(uNode.input_msg)
+            w = compute_widx(uNode.input_msg)
             distances = np.apply_along_axis(widx_distance, 1,
                                             (uNode.coincidences - w))
             uNode.k = np.argmin(distances)
