@@ -2,8 +2,8 @@ PYTHON = python
 MAIN = main.py
 TEST = py.test
 
-# run:
-# 	$(PYTHON) $(MAIN)
+run:
+	$(PYTHON) $(MAIN)
 
 test:
 	$(TEST)

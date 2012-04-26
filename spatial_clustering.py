@@ -27,6 +27,7 @@ class SpatialPooler(object):
         ## then, update the temporal activation matrix (TAM)
         if not uTemporalGap:
             for t in range(len(uNode.k_prev)):
+                #print uNode.k_prev
                 uNode.TAM[uNode.k_prev[t], uNode.k] = \
                     uNode.TAM[uNode.k_prev[t], uNode.k] + 1 + self.transition_memory - (t + 1)
         
@@ -44,7 +45,7 @@ class EntrySpatialPooler(SpatialPooler):
         ## if processing the first input pattern,
         ## immediately make a new coincidence and return        
         if uNode.coincidences.size == 0:
-            uNode.coincidences = np.array([uNode.input_msg])
+            uNode.coincidences = np.array(uNode.input_msg)
             uNode.k = 0
             uNode.seen = [1]
             uNode.TAM = np.array([[0]])
@@ -52,6 +53,7 @@ class EntrySpatialPooler(SpatialPooler):
         else:
             ## compute the distance of each coincidence from the
             ## given input
+            ## !FIXME is there a way to speed up the whole thing?
             distances = np.apply_along_axis(np.linalg.norm, 1, 
                                             (uNode.coincidences - uNode.input_msg))
             ## find the minimum
@@ -62,6 +64,7 @@ class EntrySpatialPooler(SpatialPooler):
             ## make a new coincidence
             if minimum > self.threshold:
                 uNode.coincidences = np.vstack((uNode.coincidences, uNode.input_msg))
+                print uNode.coincidences.shape
                 (uNode.k, _) = uNode.coincidences.shape
                 uNode.k -= 1
                 uNode.seen = np.hstack((uNode.seen, 0))
@@ -69,7 +72,7 @@ class EntrySpatialPooler(SpatialPooler):
                 ## resize TAM
                 uNode.TAM = utils.inc_rows_cols(uNode.TAM)
                 
-            ## increment the seen vector
+                ## increment the seen vector
                 uNode.seen[uNode.k] += 1
 
 
