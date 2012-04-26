@@ -78,7 +78,7 @@ class TemporalPooler(object):
                 remove_adjlist(n, graph)
                 remove_tc(n, tc)
             
-            partition.append(omega)
+            partition.append(list(omega))
         
         return partition
     
@@ -169,19 +169,19 @@ if __name__ == "__main__":
     #print p.top_most_connected(0, [], TAM)
 
     ## test cluster
-    # TC = np.random.rand(1, 100)
-    # TAM = np.random.rand(100, 100)
+    TC = np.random.rand(1, 100)
+    TAM = np.random.rand(100, 100)
 
-    # cluster = p.cluster(TC[0], TAM)
-    # s = 0
-    # for c in cluster:
-    #     s += len(c)
-    #     print len(c)
+    cluster = p.greedy_temporal_clustering(TC[0], TAM)
+    s = 0
+    for c in cluster:
+        s += len(c)
+        print len(c)
         
-    # print "Total coinc:", s
+    print "Total coinc:", s
 
-    # for c in cluster:
-    #     print c
+    for c in cluster:
+        print c
 
     ## testing tam2adjlist and remove
     # graph = tam2adjlist(TAM)
