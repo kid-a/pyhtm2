@@ -59,7 +59,6 @@ class TemporalPooler(object):
         partition = []
         
         while len(graph) > 0:
-            print len(graph)
             (k, tc) = self.pop_highest_coincidence(tc)
             omega = set([k])
             unprocessed = [k]
@@ -73,7 +72,16 @@ class TemporalPooler(object):
                 processed.append(k)
                 unprocessed.remove(k)
                 unprocessed.extend(most_connected)
-                unprocessed = list(set(unprocessed))
+                unprocessed = list(set(unprocessed).difference(set(processed)))
+                
+                # if len(unprocessed) == 0 and \
+                #         len(omega) < self.min_group_size and \
+                #         len(tc) != 0:
+
+                #     (k, tc) = self.pop_highest_coincidence(tc)
+                #     omega.add(k)
+                #     unprocessed = [k]
+                #     continue
                 
             for n in omega:
                 remove_adjlist(n, graph)
@@ -125,7 +133,7 @@ class TemporalPooler(object):
         norm_TAM = utils.normalize_over_rows(norm_TAM)
         
         ## compute coincidence priors
-        coincidence_priors = uNode.seen / uNode.seen.sum()
+        coincidence_priors = uNode.seen / float(uNode.seen.sum())
         
         ## compute the temporal connections
         TC = np.dot(coincidence_priors, norm_TAM)

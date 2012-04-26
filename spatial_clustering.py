@@ -71,8 +71,8 @@ class EntrySpatialPooler(SpatialPooler):
                 ## resize TAM
                 uNode.TAM = utils.inc_rows_cols(uNode.TAM)
                 
-                ## increment the seen vector
-                uNode.seen[uNode.k] += 1
+            ## increment the seen vector
+            uNode.seen[uNode.k] += 1
                 
             print uNode.coincidences.shape
 
