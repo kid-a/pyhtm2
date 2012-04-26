@@ -46,7 +46,7 @@ class EntrySpatialPooler(SpatialPooler):
         if uNode.coincidences.size == 0:
             uNode.coincidences = np.array(uNode.input_msg)
             uNode.k = 0
-            uNode.seen = [1]
+            uNode.seen = np.array([1])
             uNode.TAM = np.array([[0]])
             
         else:
@@ -70,11 +70,10 @@ class EntrySpatialPooler(SpatialPooler):
 
                 ## resize TAM
                 uNode.TAM = utils.inc_rows_cols(uNode.TAM)
+                print uNode.coincidences.shape
                 
             ## increment the seen vector
             uNode.seen[uNode.k] += 1
-                
-            print uNode.coincidences.shape
 
 
 class IntermediateSpatialPooler(SpatialPooler):
@@ -85,7 +84,7 @@ class IntermediateSpatialPooler(SpatialPooler):
         if uNode.coincidences.size == 0:
             uNode.coincidences = np.array([compute_widx(uNode.input_msg)])
             uNode.k = 0
-            uNode.seen = [1]
+            uNode.seen = np.array([1])
             uNode.TAM = np.array([[0]])
             
         else:

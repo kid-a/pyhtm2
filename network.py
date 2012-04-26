@@ -6,6 +6,8 @@ from spatial_clustering import IntermediateSpatialPooler
 from spatial_clustering import OutputSpatialPooler
 from temporal_clustering import TemporalPooler
 
+import utils
+
 ## layer type definitions
 ENTRY = 0
 INTERMEDIATE = 1
@@ -65,23 +67,74 @@ class Network(object):
 
     def train(self, sequences):
         
-        ## train first node
-        for e in sequences['entry']:
-            for i in range(len(self.layers[0].nodes)):
-                for j in range(len(self.layers[0].nodes[i])):
-                    self.layers[0].nodes[i][j].input_msg = e.reshape((1, e.size))
+        for i in range(len(self.layers)):
+            if i == 0: ## entry
+                for cls in sequences['entry']:
+                    sequence = sequences['entry'][cls]
 
-            self.layers[0].train()
-        
-        ## finalize training
-        self.layers[0].finalize_training()
-            
-        
-            
+                    for (s,t) in sequence:
+                        for j in range(len(s)):
+                            
+                            if j in t: temporal_gap = True
+                            else: temporal_gap = False
 
-            
-            
-    
+                            if self.layers[i].node_sharing:
+                                self.layers[i].nodes[0][0].input_msg = \
+                                    s[j].reshape((1, s[j].size))
+                        
+                                self.layers[0].train(temporal_gap)
+
+                            ## !FIXME node sharing set to false won't work
+                            # else:
+                            #     for l in range(len(self.layers[i].nodes)):
+                            #         for k in range(len(self.layers[i].nodes[l])):
+                            #             self.layers[i].nodes[l][k].input_msg = \
+                            #                 e[0].reshape((1, e[0].size))
+                                
+                            #             self.layers[0].train()
+
+                self.layers[0].finalize_training()
+
+            elif i == (len(self.layers) - 1): ## output
+                for cls in sequences['output']:
+                    sequence = sequences['output'][cls]
+                    
+                    for (s,t) in sequence:
+                        for j in range(len(s)):
+                            
+                            if j in t: temporal_gap = True
+                            else: temporal_gap = False
+                            
+                            self.expose(s[j])
+
+                            for m in range(i - 1):
+                                self.inference()
+                                self.propagate(m, m + 1)
+
+                            self.layers[i].train(cls)
+                            
+                self.layers[i].finalize_training()
+                                    
+            else: ## intermediate
+                for cls in sequences['intermediate']:
+                    sequence = sequences['intermediate'][cls]
+
+                    for (s,t) in sequence:
+                        for j in range(len(s)):
+                            
+                            if j in t: temporal_gap = True
+                            else: temporal_gap = False
+                            
+                            self.expose(s[j])
+
+                            for m in range(i - 1):
+                                self.inference()
+                                self.propagate(m, m + 1)
+
+                            self.layers[i].train(temporal_gap)
+                            
+                self.layers[i].finalize_training()
+
     def inference(self):
         pass
 
@@ -91,7 +144,7 @@ class Layer(object):
         self.nodes = []
         self.spatial_pooler = None
         self.temporal_pooler = None
-
+        
         ## params
         self.sigma = None
         self.distance_thr = None
@@ -124,9 +177,9 @@ class Layer(object):
                     self.nodes[i][j].PCG = self.nodes[0][0].PCG
             
         else:
-            for i in range(self.nodes):
-                for j in range(self.nodes[i]):
-                    temporal_pooler.finalize_training(self.nodes[i][j])
+            for i in range(len(self.nodes)):
+                for j in range(len(self.nodes[i])):
+                    self.temporal_pooler.finalize_training(self.nodes[i][j])
 
 
 class OutputLayer(object):
@@ -140,7 +193,7 @@ class OutputLayer(object):
     def inference(self): pass
     
     def train(self, uClass):
-        spatial_pooler.train_node(self.nodes[0][0], uClass)
+        self.spatial_pooler.train_node(self.nodes[0][0], uClass)
         
     def finalize_training(self):
         ## compute class priors
@@ -149,7 +202,7 @@ class OutputLayer(object):
         self.cls_prior_prob = s / float(total)
         
         ## normalize the PCW matrix
-        self.nodes[0][0].PCW = utils.normalize_over_columns(self.nodes[0][0].PCW)
+        self.nodes[0][0].PCW = utils.normalize_over_cols(self.nodes[0][0].PCW)
 
 
 class Node(object):
@@ -218,11 +271,10 @@ class HTMBuilder(object):
                 
             self.network.layers.append(l)
         
-    def make_layer(self, uParams, uType):
-        l = Layer()
-        
+    def make_layer(self, uParams, uType):        
         ## !FIXME lots of unuseful params here
         if uType == ENTRY:
+            l = Layer()
             for i in range(uParams['shape'][0]):
                 l.nodes.append([])
                 for j in range(uParams['shape'][1]):
@@ -236,6 +288,7 @@ class HTMBuilder(object):
             # l.min_group_size = uParams['min_group_size']
 
         elif uType == INTERMEDIATE:
+            l = Layer()
             for i in range(uParams['shape'][0]):
                 l.nodes.append([])
                 for j in range(uParams['shape'][1]):
@@ -248,7 +301,8 @@ class HTMBuilder(object):
             # l.min_group_size = uParams['min_group_size']
             
         else: ## uType == OUTPUT
-            l.nodes.append(OutputNode())
+            l = OutputLayer()
+            l.nodes.append([OutputNode()])
             #l.distance_thr = uParams['distance_thr']
             
         return l
