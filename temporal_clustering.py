@@ -3,72 +3,106 @@ import copy
 import utils
 import network
 
+
+def tc2dict(TC):
+    """Given the TC vector, returns a dict of <connectivity-node> pairs."""
+    d = {}
+    for i in range(len(TC)): d[TC[i]] = []
+    for i in range(len(TC)): d[TC[i]].append(i)
+    return d
+
+
+def remove_tc(node, TC):
+    for i in TC.keys():
+        l = TC[i]
+        try: 
+            l.remove(node)
+            if len(l) == 0: del TC[i]
+            break
+
+        except: continue
+
+
+def tam2adjlist(TAM):
+    adjlist = {}
+    (rows, cols) = TAM.shape
+
+    for i in range(rows):
+        adjlist[i] = []
+        for j in range(cols):
+            if i == j: continue ## skip auto-connections
+            if TAM[i,j] > 0:
+                adjlist[i].append((j, TAM[i,j]))
+                
+    return adjlist
+
+
+def remove_adjlist(node, adjlist):
+    del adjlist[node]
+
+    for n in adjlist:
+        for (t,w) in adjlist[n]:
+            if t == node:
+                adjlist[n].remove((t,w))
+    
+
 class TemporalPooler(object):
     def __init__(self, uMaxGroupSize, uMinGroupSize, uTopNeighbours):
         self.max_group_size = uMaxGroupSize
         self.min_group_size = uMinGroupSize ##!FIXME it is not used
         self.top_neighbours = uTopNeighbours
 
-    def select_highest_coincidence(self, uTC, uCoincidences):
-        """Select the coincidence with the highest temporal connection
-        among the ones contained in uCoincidences."""
-        if len(uCoincidences) == 0:
-            raise Exception("all coincidences have been assigned.")
-        
-        while True:
-            k = np.argmax(uTC)
-            if k in uCoincidences: return k
-            else: uTC[k] = -1
-
-    def top_most_connected(self, uK, uCoincidences, uTAM):
-        """Selects the coincidences that are in a closely temporally connected with uK."""
-        most_connected = []
-
-        if len(uCoincidences) == 0:
-            return most_connected
-        
-        connection_levels = uTAM[uK,:]
-        
-        while len(most_connected) < self.top_neighbours and \
-                len(uCoincidences) != 0 and\
-                np.sum(connection_levels) != (-1) * len(connection_levels):
-
-            c = np.argmax(connection_levels)
-
-            if c in uCoincidences: 
-                most_connected.append(c)
-                uCoincidences.remove(c)
-                
-            connection_levels[c] = -1
-                
-        return most_connected
-
-
-    def cluster(self, uTC, uTAM):
+    def greedy_temporal_clustering(self, uTC, uTAM):
         """Implements the greedy temporal clustering algorithm."""
-        P = []
-        coincidences = set(range(len(uTC)))
+        graph = tam2adjlist(uTAM)
+        tc = tc2dict(uTC)
+        partition = []
         
-        while len(coincidences) > 0:
-            Omega = []
-            k = self.select_highest_coincidence(uTC, coincidences)
-            coincidences.remove(k)
-            Omega.append(k)
-            pos = len(Omega) - 1
+        while len(graph) > 0:
+            (k, tc) = self.pop_highest_coincidence(tc)
+            omega = set([k])
+            unprocessed = [k]
+            processed = []
             
-            while pos <= (len(Omega) - 1) and pos < self.max_group_size:
-                k = Omega[pos]
-                most_connected = self.top_most_connected(k, copy.deepcopy(coincidences), uTAM)
-                Omega.extend(most_connected)
-
-                for m in most_connected:
-                    coincidences.remove(m)
-
-                pos += 1
+            while len(unprocessed) > 0 and len(processed) < self.max_group_size:
+                k = unprocessed[0] ## pick an unprocessed node
+                most_connected = self.top_most_connected(graph, k)
+                omega = omega.union(most_connected)
                 
-            P.append(Omega)
+                processed.append(k)
+                unprocessed.remove(k)
+                unprocessed.extend(most_connected)
+                unprocessed = list(set(unprocessed))
+                
+            for n in omega:
+                remove_adjlist(n, graph)
+                remove_tc(n, tc)
             
-        return P
+            partition.append(omega)
+        
+        return partition
+    
+    def pop_highest_coincidence(self, uTC):
+        if len(uTC) == 0: return (None, None)
+        else:
+            m = max(uTC)
+            k = uTC[m][0]
+            uTC[m].remove(k)
+            
+            if len(uTC[m]) == 0: del uTC[m]
+            
+            return (k, uTC)
+
+    def top_most_connected(self, uGraph, uSource):
+        most_connected = []
+        neighbours = uGraph[uSource]
+        
+        if len(neighbours) < self.top_neighbours:
+            return map(lambda x : x[0], neighbours)
+        
+        else:
+            sorted_neighbours = sorted(neighbours, key=lambda x : x[1])
+            return map(lambda x : x[0], neighbours[:self.top_neighbours])
 
     def compute_PCG(uCoincidencePriors, uTemporalGroups):
         """Compute the PCG matrix."""
@@ -103,8 +137,8 @@ class TemporalPooler(object):
 
 
 if __name__ == "__main__":
-    p = TemporalPooler(5, 3, 1)
-    TC = np.array([1,2,3,4])
+    p = TemporalPooler(5, 3, 3)
+    TC = np.array([1,2,3,3])
     coincidences = set([0,1,2,3])    
     
     ## test select_highest_coincidence
@@ -148,6 +182,47 @@ if __name__ == "__main__":
 
     # for c in cluster:
     #     print c
+
+    ## testing tam2adjlist and remove
+    # graph = tam2adjlist(TAM)
+    # print graph
+    
+    # remove(2, graph)
+    # print graph
+    
+    ## testing p.pop_highest_coincidence
+    # print tc2dict(TC)
+    # (k, TC) = p.pop_highest_coincidence(tc2dict(TC))
+    # print k, TC
+    # (k, TC) = p.pop_highest_coincidence(TC)
+    # print k, TC
+    # (k, TC) = p.pop_highest_coincidence(TC)
+    # print k, TC
+    # (k, TC) = p.pop_highest_coincidence(TC)
+    # print k, TC
+    # print p.pop_highest_coincidence(TC)
+
+    ## testing remove_tc
+    # print tc2dict(TC)
+    # TC = tc2dict(TC)
+    # remove_tc(1,TC)
+    # print TC
+    # remove_tc(2,TC)
+    # print TC
+    # remove_tc(3,TC)
+    # print TC
+    # remove_tc(0,TC)
+    # print TC
+    # remove_tc(0,TC)
+    # print TC
+
+    ## testing top_most_connected
+    # graph = tam2adjlist(TAM)
+    # print graph
+    # print 
+    # print p.top_most_connected(graph, 0)
+
+
 
     
 
