@@ -1,6 +1,10 @@
 import numpy as np
 import math
 
+from spatial_clustering import EntrySpatialPooler
+from spatial_clustering import IntermediateSpatialPooler
+from spatial_clustering import OutputSpatialPooler
+
 ## layer type definitions
 ENTRY = 0
 INTERMEDIATE = 1
@@ -10,6 +14,30 @@ OUTPUT = 2
 class Network(object):
     def __init__(self, *args, **kwargs):
         self.layers = []
+        
+    def expose(self, uInput):
+        (input_height, input_width) = uInput.shape
+        (layer_height, layer_width) = (len(self.layers[0].nodes), len(self.layers[0].nodes))
+        
+        patch_height = input_height / layer_height
+        patch_width = input_width / layer_width
+    
+        starting_point_h = 0;
+        starting_point_w = 0;
+        
+        for i in range(layer_height):
+            for j in range(layer_width):
+                node = self.layers[0].nodes[i][j]
+                patch = uInput[starting_point_h : starting_point_h + patch_height,
+                               starting_point_w : starting_point_w + patch_width]
+                
+                node.input_msg = np.reshape(patch, (1, patch.size))
+                
+                starting_point_w += patch_width
+                
+            starting_point_w = 0
+            starting_point_h += patch_height
+
         
     def propagate(self, uFrom, uTo):
         f = self.layers[uFrom]
@@ -34,7 +62,19 @@ class Network(object):
                     msg = f.nodes[i][j].output_msg
                     t.nodes[int(upper_i)][int(upper_j)].input_msg.append(msg)
 
-    def train(self):
+    def train(self, sequences):
+        for e in sequences['entry']:
+            for i in range(len(self.layers[0].nodes)):
+                for j in range(len(self.layers[0].nodes[i])):
+                    self.layers[0].nodes[i][j].input_msg = e.reshape((1, e.size))
+
+            self.layers[0].train()
+            
+
+            
+            
+    
+    def inference(self):
         pass
 
 
@@ -55,17 +95,17 @@ class Layer(object):
     def train(self, uTemporalGap=False):
         if self.node_sharing:  
             ## train just the first node
-            spatial_pooler.train_node(self.nodes[0][0], uTemporalGap=uTemporalGap)
+            self.spatial_pooler.train_node(self.nodes[0][0], uTemporalGap=uTemporalGap)
             
         else: ## train all nodes in the layer
             for i in range(self.nodes):
                 for j in range(self.nodes[i]):
-                    spatial_pooler.train_node(self.nodes[i][j], uTemporalGap=uTemporalGap)
+                    self.spatial_pooler.train_node(self.nodes[i][j], uTemporalGap=uTemporalGap)
                     
     def finalize_training(self):
         if self.node_sharing:
             ## finalize just the first node
-            temporal_pooler.finalize_training(self.nodes[0][0])
+            self.temporal_pooler.finalize_training(self.nodes[0][0])
 
             ## then copy its state, i.e. coincidences, temporal_groups and PCG
             for i in range(self.nodes):
@@ -141,10 +181,19 @@ class HTMBuilder(object):
         for i in range(len(self.network_spec)):
             if i == 0:
                 l = self.make_layer(self.network_spec[i], ENTRY)
+                l.spatial_pooler = EntrySpatialPooler(
+                    self.network_spec[i]['distance_thr'],
+                    self.network_spec[i]['transition_memory_size'])
+
             elif i == (len(self.network_spec) - 1):
                 l = self.make_layer(self.network_spec[i], OUTPUT)
+                l.spatial_pooler = OutputSpatialPooler(
+                    self.network_spec[i]['distance_thr'])
             else:
                 l = self.make_layer(self.network_spec[i], INTERMEDIATE)
+                l.spatial_pooler = IntermediateSpatialPooler(
+                    self.network_spec[i]['distance_thr'],
+                    self.network_spec[i]['transition_memory_size'])
                 
             self.network.layers.append(l)
         
@@ -158,7 +207,7 @@ class HTMBuilder(object):
                     l.nodes[i].append(Node())
                                 
             l.sigma = uParams['sigma']
-            l.distance_thr = uParams['distance_thr']
+            #l.distance_thr = uParams['distance_thr']
             l.node_sharing = uParams['node_sharing']
             l.transition_memory_size = uParams['transition_memory_size']
             l.group_max_size = uParams['group_max_size']
@@ -170,7 +219,7 @@ class HTMBuilder(object):
                 for j in range(uParams['shape'][1]):
                     l.nodes[i].append(Node())
 
-            l.distance_thr = uParams['distance_thr']
+            #l.distance_thr = uParams['distance_thr']
             l.node_sharing = uParams['node_sharing']
             l.transition_memory_size = uParams['transition_memory_size']
             l.group_max_size = uParams['group_max_size']
@@ -178,7 +227,7 @@ class HTMBuilder(object):
             
         else: ## uType == OUTPUT
             l.nodes.append(OutputNode())
-            l.distance_thr = uParams['distance_thr']
+            #l.distance_thr = uParams['distance_thr']
             
         return l
 
