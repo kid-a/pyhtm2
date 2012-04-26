@@ -43,18 +43,18 @@ def make_training_seq(uImage, uLayer, uWindowSize=(4,4)):
         (rows, cols) = image.shape
 
         ## now, pad the image with white space
-        image = np.hstack((WHITE * np.ones((rows, uWindowSize[1])),
+        image = np.hstack((WHITE * np.ones((rows, uWindowSize[1] - 1)),
                            image,
-                           WHITE * np.ones((rows, uWindowSize[1]))))
+                           WHITE * np.ones((rows, uWindowSize[1] - 1))))
 
-        image = np.vstack((WHITE * np.ones((uWindowSize[0], 
-                                            cols + 2 * uWindowSize[1])),
+        image = np.vstack((WHITE * np.ones((uWindowSize[0] - 1, 
+                                            cols + 2 * uWindowSize[1] - 2)),
                            image,
-                           WHITE * np.ones((uWindowSize[0], 
-                                            cols + 2 * uWindowSize[1]))))
+                           WHITE * np.ones((uWindowSize[0] - 1, 
+                                            cols + 2 * uWindowSize[1] - 2))))
 
         ## perform the scans
-        (rows, cols) = image.shape        
+        (rows, cols) = image.shape
         vertical_sequence = range(rows - uWindowSize[0] + 1)
         horizontal_sequence = range(cols - uWindowSize[1] + 1)
         
