@@ -53,9 +53,10 @@ class EntrySpatialPooler(SpatialPooler):
         else:
             ## compute the distance of each coincidence from the
             ## given input
-            ## !FIXME is there a way to speed up the whole thing?
-            distances = np.apply_along_axis(np.linalg.norm, 1, 
-                                            (uNode.coincidences - uNode.input_msg))
+            # distances = np.apply_along_axis(np.linalg.norm, 1, 
+            #                                 (uNode.coincidences - uNode.input_msg))
+            distances = np.sum(np.abs(uNode.coincidences - uNode.input_msg)**2,axis=-1)**(1./2)
+            
             ## find the minimum
             uNode.k = np.argmin(distances)
             minimum = distances[uNode.k]
@@ -64,7 +65,6 @@ class EntrySpatialPooler(SpatialPooler):
             ## make a new coincidence
             if minimum > self.threshold:
                 uNode.coincidences = np.vstack((uNode.coincidences, uNode.input_msg))
-                print uNode.coincidences.shape
                 (uNode.k, _) = uNode.coincidences.shape
                 uNode.k -= 1
                 uNode.seen = np.hstack((uNode.seen, 0))
