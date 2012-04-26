@@ -27,14 +27,13 @@ class SpatialPooler(object):
         ## then, update the temporal activation matrix (TAM)
         if not uTemporalGap:
             for t in range(len(uNode.k_prev)):
-                #print uNode.k_prev
                 uNode.TAM[uNode.k_prev[t], uNode.k] = \
                     uNode.TAM[uNode.k_prev[t], uNode.k] + 1 + self.transition_memory - (t + 1)
-        
+                        
         ## last, add k to the k_prev list
         uNode.k_prev.insert(0, uNode.k)
         if len(uNode.k_prev) > self.transition_memory:
-            uNode.k_prev = uNode.k_prev[1:]        
+            uNode.k_prev = uNode.k_prev[:-1]        
         
     def select_active_coinc(self, uNode): pass
 
