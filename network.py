@@ -25,49 +25,9 @@ ENTRY = 0
 INTERMEDIATE = 1
 OUTPUT = 2
 
-
-class NodeFactory(object):
-    def make_node(self, uNodeType):
-        ## initialize the new node's state with common structs
-        state = {'coincidences' : np.array([[]]),
-                 'input_msg'    : np.array([]),
-                 'output_msg'   : np.array([]),
-                 'k'            : None }
-        
-        ## then, add type-dependent structs
-        if uNodeType == ENTRY  or uNodeType == INTERMEDIATE:
-            state['temporal_groups'] = None
-            state['seen'] = np.array([])
-            state['TAM'] = np.array([[]])
-            state['PCG'] = np.array([[]])
-            state['k_prev'] = []
-            
-        else: ## uNodeType == OUTPUT
-            state['cls_prior_prob'] = np.array([])
-            state['PCW'] = np.array([[]])
-
-        strategy = {}
-        ## last, add type-dependent algorithms
-        if uNodeType == ENTRY:
-            strategy['trainer'] = EntrySpatialPooler()
-            strategy['finalizer'] = TemporalPooler()
-            strategy['inference_maker'] = EntryInferenceMaker()
-            
-        elif uNodeType == INTERMEDIATE:
-            strategy['trainer'] = IntermediateSpatialPooler()
-            strategy['finalizer'] = TemporalPooler()
-            strategy['inference_maker'] = IntermediateInferenceMaker()
-
-        elif uNodeType == OUTPUT:
-            strategy['trainer'] = OutputSpatialPooler()
-            strategy['finalizer'] = TemporalPooler()
-            strategy['inference_maker'] = OutputInferenceMaker()
-            
-        ## the state is ready, make the node
-        node = Node(state)
-        return node
-
-
+## -----------------------------------------------------------------------------
+## Node Class
+## -----------------------------------------------------------------------------
 class Node(object):
     """Implements an HTM node."""
     def __init__(self, uState, uStrategy):
@@ -102,24 +62,140 @@ class Node(object):
                 debug_print("Received unknown message")
 
 
+## -----------------------------------------------------------------------------
+## Layer Class
+## -----------------------------------------------------------------------------
+class Layer(object):
+    def __init__(self, *args, **kwargs):
+        self.nodes = [[]]
+
+    def train(self): pass
+    def finalize(self): pass
+    def inference(self): pass
+    
+
+## -----------------------------------------------------------------------------
+## Network Class
+## -----------------------------------------------------------------------------
+class Network(object):
+    def __init__(self, *args, **kwargs):
+        self.layers = []
+        
+    def train(self): pass
+    def finalize(self): pass
+    def inference(self): pass
+
+
+## -----------------------------------------------------------------------------
+## NodeFactory Class
+## -----------------------------------------------------------------------------
+class NodeFactory(object):
+    """A factory of HTM nodes."""
+    def make_node(self, uNodeType):
+        ## initialize the new node's state with common structs
+        state = {'coincidences' : np.array([[]]),
+                 'input_msg'    : np.array([]),
+                 'output_msg'   : np.array([]),
+                 'k'            : None }
+        
+        ## then, add type-dependent structs
+        if uNodeType == ENTRY  or uNodeType == INTERMEDIATE:
+            state['temporal_groups'] = None
+            state['seen'] = np.array([])
+            state['TAM'] = np.array([[]])
+            state['PCG'] = np.array([[]])
+            state['k_prev'] = []
+            
+        else: ## uNodeType == OUTPUT
+            state['cls_prior_prob'] = np.array([])
+            state['PCW'] = np.array([[]])
+
+        ## last, add type-dependent algorithms
+        strategy = {}
+        if uNodeType == ENTRY:
+            strategy['trainer'] = EntrySpatialPooler()
+            strategy['finalizer'] = TemporalPooler()
+            strategy['inference_maker'] = EntryInferenceMaker()
+            
+        elif uNodeType == INTERMEDIATE:
+            strategy['trainer'] = IntermediateSpatialPooler()
+            strategy['finalizer'] = TemporalPooler()
+            strategy['inference_maker'] = IntermediateInferenceMaker()
+
+        elif uNodeType == OUTPUT:
+            strategy['trainer'] = OutputSpatialPooler()
+            strategy['finalizer'] = TemporalPooler()
+            strategy['inference_maker'] = OutputInferenceMaker()
+            
+        ## the state is ready, make the node
+        node = Node(state, strategy)
+        return node
+
+
+## -----------------------------------------------------------------------------
+## NetworkBuilder Class
+## -----------------------------------------------------------------------------
+class NetworkBuilder(object):
+    """Encapsulates all the mechanisms needed to craft an HTM."""
+    def __init__(self, uNetworkSpec):
+        self.spec = uNetworkSpec
+        self.node_factory = NodeFactory()
+        
+    def build(self):
+        """Build the network."""
+        layers_spec = [INTERMEDIATE for s in self.spec]
+        layers_spec[0] = ENTRY
+        layers_spec[-1] = OUTPUT
+        layers = []
+        
+        ## iterate over layers to create
+        for i in range(len(self.spec)):
+            layer = Layer()
+            (height, width) = self.spec[i]['shape']
+            
+            layer.nodes = []
+
+            ## create nodes
+            for k in range(height):
+                layer.nodes.append([])
+
+                for l in range(width):
+                    node = self.node_factory.make_node(layers_spec[i])
+                    layer.nodes[k].append(node)
+                    
+            layers.append(layer)
+            
+        network = Network()
+        network.layers = layers
+        
+        return network
+
+
+## main/tests ------------------------------------------------------------------
 if __name__ == "__main__":
-    ## some tests
-    factory = NodeFactory()
-    nodes = []
-    for i in range(20):
-        nodes.append([])
-        for j in range(20):
-            nodes[i].append(factory.make_node(ENTRY))
+    import config
+    builder = NetworkBuilder(config.usps_net)
+    htm = builder.build()
 
     stackless.run()
+        
+    ## some tests
+    # factory = NodeFactory()
+    # nodes = []
+    # for i in range(20):
+    #     nodes.append([])
+    #     for j in range(20):
+    #         nodes[i].append(factory.make_node(ENTRY))
 
-    for i in range(20):
-        for j in range(20):
-            nodes[i][j].channel.send("get_state")
 
-    for i in range(20):
-        for j in range(20):
-            nodes[i][j].channel.send("terminate")
+
+    # for i in range(20):
+    #     for j in range(20):
+    #         nodes[i][j].channel.send("get_state")
+
+    # for i in range(20):
+    #     for j in range(20):
+    #         nodes[i][j].channel.send("terminate")
     
 
 
