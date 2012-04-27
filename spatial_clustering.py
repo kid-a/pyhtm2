@@ -106,6 +106,7 @@ class IntermediateSpatialPooler(SpatialPooler):
 
                 ## resize TAM
                 uNode.TAM = utils.inc_rows_cols(uNode.TAM)
+                print uNode.coincidences.shape
                 
             ## increment the seen vector
             uNode.seen[uNode.k] += 1
@@ -140,7 +141,7 @@ class OutputSpatialPooler(SpatialPooler):
         else:
             ## compute the distance of each coincidence from the
             ## given input
-            w =compute_widx(uNode.input_msg)
+            w = compute_widx(uNode.input_msg)
             distances = np.apply_along_axis(widx_distance, 1,
                                             (uNode.coincidences - w))
             uNode.k = np.argmin(distances)
@@ -152,6 +153,7 @@ class OutputSpatialPooler(SpatialPooler):
                 uNode.coincidences = np.vstack((uNode.coincidences, w))
                 (uNode.k, _) = uNode.coincidences.shape
                 uNode.k -= 1
+                print uNode.coincidences.shape
         
 
 if __name__ == "__main__":

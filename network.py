@@ -1,3 +1,4 @@
+from multiprocessing import Pool
 import numpy as np
 import math
 
@@ -5,6 +6,10 @@ from spatial_clustering import EntrySpatialPooler
 from spatial_clustering import IntermediateSpatialPooler
 from spatial_clustering import OutputSpatialPooler
 from temporal_clustering import TemporalPooler
+import inference
+from inference import EntryInferenceMaker
+from inference import IntermediateInferenceMaker
+from inference import OutputInferenceMaker
 
 import utils
 
@@ -107,8 +112,8 @@ class Network(object):
                             
                             self.expose(s[j])
 
-                            for m in range(i - 1):
-                                self.inference()
+                            for m in range(i):
+                                self.layers[m].inference()
                                 self.propagate(m, m + 1)
 
                             self.layers[i].train(cls)
@@ -127,8 +132,8 @@ class Network(object):
                             
                             self.expose(s[j])
 
-                            for m in range(i - 1):
-                                self.inference()
+                            for m in range(i):
+                                self.layers[m].inference()
                                 self.propagate(m, m + 1)
 
                             self.layers[i].train(temporal_gap)
@@ -141,9 +146,11 @@ class Network(object):
 
 class Layer(object):
     def __init__(self, *args, **kwargs):
+        self.type = None
         self.nodes = []
         self.spatial_pooler = None
         self.temporal_pooler = None
+        self.pool = Pool(processes=20)
         
         ## params
         self.sigma = None
@@ -152,6 +159,31 @@ class Layer(object):
         self.transition_memory_size = None
         self.max_group_size = None
         self.min_group_size = None
+        
+    def inference(self):
+        results = []
+        for i in range(len(self.nodes)):
+            results.append([])
+            for j in range(len(self.nodes[i])):
+                if self.sigma != None:
+                    #self.inference_maker.inference(self.nodes[i][j], self.sigma)
+                    results[i].append(
+                        self.pool.apply_async(
+                            inference.inference,
+                            [self.nodes[i][j], self.type, self.sigma]))
+                else:
+                    results[i].append(
+                        self.pool.apply_async(
+                            inference.inference,
+                            [self.nodes[i][j], self.type]))
+                    #self.inference_maker.inference(self.nodes[i][j])
+                    
+        for i in range(len(results)):
+            for j in range(len(results[i])):
+                results[i][j].wait()
+                self.nodes[i][j].output_msg = \
+                    results[i][j].get()
+                    
         
     def train(self, uTemporalGap=False):
         if self.node_sharing:  
@@ -186,11 +218,13 @@ class OutputLayer(object):
     def __init__(self, *args, **kwargs):
         self.nodes = []
         self.spatial_pooler = None
+        self.inference_maker = None
 
         ## params
         self.distance_thr = None
         
-    def inference(self): pass
+    def inference(self):
+        self.inference_maker.inference(self.nodes[0][0])
     
     def train(self, uClass):
         self.spatial_pooler.train_node(self.nodes[0][0], uClass)
@@ -251,12 +285,17 @@ class HTMBuilder(object):
                     self.network_spec[i]['max_group_size'],
                     self.network_spec[i]['min_group_size'],
                     self.network_spec[i]['top_neighbours'])
+
+                l.type = ENTRY
                                                    
             elif i == (len(self.network_spec) - 1):
                 l = self.make_layer(self.network_spec[i], OUTPUT)
 
                 l.spatial_pooler = OutputSpatialPooler(
                     self.network_spec[i]['distance_thr'])
+
+                l.type = OUTPUT
+
             else:
                 l = self.make_layer(self.network_spec[i], INTERMEDIATE)
 
@@ -268,6 +307,8 @@ class HTMBuilder(object):
                     self.network_spec[i]['max_group_size'],
                     self.network_spec[i]['min_group_size'],
                     self.network_spec[i]['top_neighbours'])
+
+                l.type = INTERMEDIATE
                 
             self.network.layers.append(l)
         
