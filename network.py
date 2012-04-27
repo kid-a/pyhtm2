@@ -140,8 +140,13 @@ class Network(object):
                             
                 self.layers[i].finalize_training()
 
-    def inference(self):
-        pass
+    def inference(self, uInput):
+        self.expose(uInput)
+        for m in range(len(self.layers) - 1):
+            self.layers[m].inference()
+            self.propagate(m, m + 1)
+
+        return self.layers[-1].inference()
 
 
 class Layer(object):
@@ -224,7 +229,7 @@ class OutputLayer(object):
         self.distance_thr = None
         
     def inference(self):
-        self.inference_maker.inference(self.nodes[0][0])
+        return inference.inference(self.nodes[0][0], OUTPUT)
     
     def train(self, uClass):
         self.spatial_pooler.train_node(self.nodes[0][0], uClass)
@@ -233,7 +238,7 @@ class OutputLayer(object):
         ## compute class priors
         s = self.nodes[0][0].PCW.sum(axis=0)
         total = self.nodes[0][0].PCW.sum()
-        self.cls_prior_prob = s / float(total)
+        self.nodes[0][0].cls_prior_prob = s / float(total)
         
         ## normalize the PCW matrix
         self.nodes[0][0].PCW = utils.normalize_over_cols(self.nodes[0][0].PCW)

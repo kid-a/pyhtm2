@@ -15,7 +15,7 @@ def inference(uNode, uLayer, uSigma=0, uClass=None):
     
     else:
         p = OutputInferenceMaker()
-        return p.inference(uNode, uClass)
+        return p.inference(uNode)
 
 
 class InferenceMaker(object):
@@ -61,6 +61,22 @@ class IntermediateInferenceMaker(InferenceMaker):
     
 
 class OutputInferenceMaker(InferenceMaker):
+    def dens_over_coinc(self, uCoincidences, uCurrentInput, uSigma=None):
+        (rows, cols) = uCoincidences.shape
+        y = np.array([[]])
+
+        for i in range(rows):
+            selected_coincidences = np.array([])
+
+            for j in range(cols):
+                selected_coincidences = \
+                    np.append(selected_coincidences, 
+                              uCurrentInput[j][0][uCoincidences[i,j]])
+
+            y = np.append(y, np.prod(selected_coincidences))
+            
+        return np.array([y])
+
     def dens_over_classes(self, uY, uPCW):
         return np.dot(uY, uPCW)
     
@@ -71,13 +87,10 @@ class OutputInferenceMaker(InferenceMaker):
     def inference(self, uNode):
         y = utils.normalize_over_rows(
             self.dens_over_coinc(uNode.coincidences,
-                                 uNode.input_msg,
-                                 uSigma))
-        
-        
+                                 uNode.input_msg))
         z = self.dens_over_classes(y, uNode.PCW)
         p = self.class_post_prob(z, uNode.cls_prior_prob)
-        #uNode.output_msg = p        
+        
         return p
 
 
