@@ -1,7 +1,7 @@
 import numpy as np
 import copy
 import utils
-import network
+#import network
 
 
 def tc2dict(TC):
@@ -47,10 +47,10 @@ def remove_adjlist(node, adjlist):
     
 
 class TemporalPooler(object):
-    def __init__(self, uMaxGroupSize, uMinGroupSize, uTopNeighbours):
-        self.max_group_size = uMaxGroupSize
-        self.min_group_size = uMinGroupSize ##!FIXME it is not used
-        self.top_neighbours = uTopNeighbours
+    # def __init__(self, uMaxGroupSize, uMinGroupSize, uTopNeighbours):
+    #     self.max_group_size = uMaxGroupSize
+    #     self.min_group_size = uMinGroupSize ##!FIXME it is not used
+    #     self.top_neighbours = uTopNeighbours
 
     def greedy_temporal_clustering(self, uTC, uTAM):
         """Implements the greedy temporal clustering algorithm."""

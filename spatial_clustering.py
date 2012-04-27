@@ -1,6 +1,6 @@
 import numpy as np
 import utils
-import network
+#import network
 
 
 def compute_widx(msg):
@@ -15,9 +15,9 @@ def widx_distance(diff):
 
 class SpatialPooler(object):
     """Implements the algorithms for clustering coincidences."""
-    def __init__(self, uThreshold, uTransitionMemory=0, *args, **kwargs):
-        self.threshold = uThreshold
-        self.transition_memory = uTransitionMemory
+    # def __init__(self, uThreshold, uTransitionMemory=0, *args, **kwargs):
+    #     self.threshold = uThreshold
+    #     self.transition_memory = uTransitionMemory
     
     def train_node(self, uNode, uClass=0, uTemporalGap=False):
         """Train a node on the current input."""

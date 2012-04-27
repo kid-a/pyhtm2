@@ -1,4 +1,4 @@
-PYTHON = python
+PYTHON = python2.7
 MAIN = main.py
 TEST = py.test
 
