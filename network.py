@@ -46,21 +46,22 @@ class NodeFactory(object):
             state['cls_prior_prob'] = np.array([])
             state['PCW'] = np.array([[]])
 
+        strategy = {}
         ## last, add type-dependent algorithms
         if uNodeType == ENTRY:
-            state['trainer'] = EntrySpatialPooler()
-            state['finalizer'] = TemporalPooler()
-            state['inference_maker'] = EntryInferenceMaker()
+            strategy['trainer'] = EntrySpatialPooler()
+            strategy['finalizer'] = TemporalPooler()
+            strategy['inference_maker'] = EntryInferenceMaker()
             
         elif uNodeType == INTERMEDIATE:
-            state['trainer'] = IntermediateSpatialPooler()
-            state['finalizer'] = TemporalPooler()
-            state['inference_maker'] = IntermediateInferenceMaker()
+            strategy['trainer'] = IntermediateSpatialPooler()
+            strategy['finalizer'] = TemporalPooler()
+            strategy['inference_maker'] = IntermediateInferenceMaker()
 
         elif uNodeType == OUTPUT:
-            state['trainer'] = OutputSpatialPooler()
-            state['finalizer'] = TemporalPooler()
-            state['inference_maker'] = OutputInferenceMaker()
+            strategy['trainer'] = OutputSpatialPooler()
+            strategy['finalizer'] = TemporalPooler()
+            strategy['inference_maker'] = OutputInferenceMaker()
             
         ## the state is ready, make the node
         node = Node(state)
@@ -69,8 +70,9 @@ class NodeFactory(object):
 
 class Node(object):
     """Implements an HTM node."""
-    def __init__(self, uState):
+    def __init__(self, uState, uStrategy):
         self.state = uState
+        self.strategy = uStrategy
         self.channel = stackless.channel()
         stackless.tasklet(self.messageloop)()
         
@@ -79,25 +81,26 @@ class Node(object):
             message = self.channel.receive()
             
             if message == "train":
-                pass
+                self.strategy['trainer'].train(self.state)
 
             elif message == "finalize_training":
-                pass
+                self.strategy['finalizer'].finalize(self.state)
 
             elif message == "inference":
-                pass
-
+                self.strategy['inference_maker'].inference(self.state)
+                                
             elif message == "get_state":
-                pass
-
-            elif message == "set_state":
-                pass
+                self.channel.send(self.state)
 
             elif message == "terminate":
                 debug_print("Terminating...")
 
+            elif message[0] == "set_state":
+                self.state = message[1]
+
             else:
                 debug_print("Received unknown message")
+
 
 if __name__ == "__main__":
     ## some tests
