@@ -1,7 +1,10 @@
 ## global import ---------------------------------------------------------------
-import stackless
+from multiprocessing import Process
+from multiprocessing import Queue
+from multiprocessing import Event
 import time
 import sys
+
 
 ## import numpy specifying its path
 sys.path.append('/usr/lib/pymodules/python2.7/')
@@ -25,41 +28,45 @@ ENTRY = 0
 INTERMEDIATE = 1
 OUTPUT = 2
 
+
 ## -----------------------------------------------------------------------------
 ## Node Class
 ## -----------------------------------------------------------------------------
-class Node(object):
+class Node(Process):
     """Implements an HTM node."""
     def __init__(self, uState, uStrategy):
+        super(Node, self).__init__()
         self.state = uState
         self.strategy = uStrategy
-        self.channel = stackless.channel()
-        stackless.tasklet(self.messageloop)()
+        self.input_channel = Queue()
+        self.output_channel = Queue()
         
-    def messageloop(self):
+    def run(self):
         while True:
-            message = self.channel.receive()
+            msg = self.input_channel.get()
+            debug_print(str(self.state['name']) + str(msg))
+
+            if msg == "train":
+                pass
+
+            elif msg == "finalize":
+                pass
+
+            elif msg == "inference":
+                pass
+
+            elif msg == "get_output":
+                self.output_channel.put(self.state['output_msg'])
             
-            if message == "train":
-                self.strategy['trainer'].train(self.state)
-
-            elif message == "finalize_training":
-                self.strategy['finalizer'].finalize(self.state)
-
-            elif message == "inference":
-                self.strategy['inference_maker'].inference(self.state)
-                                
-            elif message == "get_state":
-                self.channel.send(self.state)
-
-            elif message == "terminate":
-                debug_print("Terminating...")
-
-            elif message[0] == "set_state":
-                self.state = message[1]
+            elif msg[0] == "set_input":
+                self.state['input_msg'] = msg[1]
+                debug_print(str(self.state['name']) + \
+                                " new input: " + \
+                                str(self.state['input_msg']))
 
             else:
-                debug_print("Received unknown message")
+                debug_print(str(self.state['name']) + \
+                                ": received unknown message")
 
 
 ## -----------------------------------------------------------------------------
@@ -80,10 +87,11 @@ class Layer(object):
 class Network(object):
     def __init__(self, *args, **kwargs):
         self.layers = []
-        
+
     def train(self): pass
     def finalize(self): pass
     def inference(self): pass
+    def propagate(sefl): pass
 
 
 ## -----------------------------------------------------------------------------
@@ -91,9 +99,10 @@ class Network(object):
 ## -----------------------------------------------------------------------------
 class NodeFactory(object):
     """A factory of HTM nodes."""
-    def make_node(self, uNodeType):
+    def make_node(self, uName, uNodeType):
         ## initialize the new node's state with common structs
-        state = {'coincidences' : np.array([[]]),
+        state = {'name' : uName,
+                 'coincidences' : np.array([[]]),
                  'input_msg'    : np.array([]),
                  'output_msg'   : np.array([]),
                  'k'            : None }
@@ -129,6 +138,9 @@ class NodeFactory(object):
             
         ## the state is ready, make the node
         node = Node(state, strategy)
+        
+        ## set the node to be a daemon
+        node.daemon = True
         return node
 
 
@@ -160,7 +172,7 @@ class NetworkBuilder(object):
                 layer.nodes.append([])
 
                 for l in range(width):
-                    node = self.node_factory.make_node(layers_spec[i])
+                    node = self.node_factory.make_node((k,l), layers_spec[i])
                     layer.nodes[k].append(node)
                     
             layers.append(layer)
@@ -174,31 +186,44 @@ class NetworkBuilder(object):
 ## main/tests ------------------------------------------------------------------
 if __name__ == "__main__":
     import config
+    import time
+    
     builder = NetworkBuilder(config.usps_net)
     htm = builder.build()
-
-    stackless.run()
-        
-    ## some tests
-    # factory = NodeFactory()
-    # nodes = []
-    # for i in range(20):
-    #     nodes.append([])
-    #     for j in range(20):
-    #         nodes[i].append(factory.make_node(ENTRY))
-
-
-
-    # for i in range(20):
-    #     for j in range(20):
-    #         nodes[i][j].channel.send("get_state")
-
-    # for i in range(20):
-    #     for j in range(20):
-    #         nodes[i][j].channel.send("terminate")
     
+    t0 = time.time()
+    for i in range(len(htm.layers[0].nodes)):
+        for j in range(len(htm.layers[0].nodes[i])):
+            htm.layers[0].nodes[i][j].start()
+            
+    for i in range(len(htm.layers[0].nodes)):
+        for j in range(len(htm.layers[0].nodes[i])):
+            htm.layers[0].nodes[i][j].input_channel.put(("set_input",
+                                                         np.array([1,2,3,4])))
+
+    for i in range(len(htm.layers[0].nodes)):
+        for j in range(len(htm.layers[0].nodes[i])):
+            htm.layers[0].nodes[i][j].input_channel.put("get_output")
+
+    for i in range(len(htm.layers[0].nodes)):
+        for j in range(len(htm.layers[0].nodes[i])):
+            res = htm.layers[0].nodes[i][j].output_channel.get()
+            print res
 
 
+    # for i in range(len(htm.layers[0].nodes)):
+    #     for j in range(len(htm.layers[0].nodes[i])):
+    #         htm.layers[0].nodes[i][j].queue.put("get_output")
+
+    # for i in range(len(htm.layers[0].nodes)):
+    #     for j in range(len(htm.layers[0].nodes[i])):
+    #         res = htm.layers[0].nodes[i][j].queue.get()
+    #         print res
+
+
+    print time.time() - t0, "seconds"
+
+        
 
 # class Network(object):
 #     def __init__(self, *args, **kwargs):
