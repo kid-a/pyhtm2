@@ -35,7 +35,7 @@ class SpatialPooler(object):
         TAM = uNodeState['TAM']
         k_prev = uNodeState['k_prev']
         k = uNodeState['k']
-        transition_memory = uNodeState['transition_memory']
+        transition_memory = uNodeState['transition_memory_size']
             
         ## then, update the temporal activation matrix (TAM)
         if not uInputInfo['temporal_gap']:

@@ -2,13 +2,9 @@
 from multiprocessing import Process
 from multiprocessing import Queue
 from multiprocessing import Event
+import numpy as np
 import time
 import sys
-
-
-## import numpy specifying its path
-sys.path.append('/usr/lib/pymodules/python2.7/')
-import numpy as np
 
 
 ## local import ----------------------------------------------------------------
@@ -44,12 +40,9 @@ class Node(Process):
     def run(self):
         while True:
             msg = self.input_channel.get()
-            debug_print(str(self.state['name']) + str(msg))
+            #debug_print(str(self.state['name']) + str(msg))
 
-            if msg == "train":
-                pass
-
-            elif msg == "finalize":
+            if msg == "finalize":
                 pass
 
             elif msg == "inference":
@@ -57,6 +50,12 @@ class Node(Process):
 
             elif msg == "get_output":
                 self.output_channel.put(self.state['output_msg'])
+
+            elif msg[0] == "train":
+                debug_print("Training node " + str(self.state['name']))
+                self.strategy['trainer'].train(self.state, msg[1])
+                debug_print("Node " + str(self.state['name']) + " new coincidences:" +
+                            str(self.state['coincidences']))
             
             elif msg[0] == "set_input":
                 self.state['input_msg'] = msg[1]
@@ -99,39 +98,49 @@ class Network(object):
 ## -----------------------------------------------------------------------------
 class NodeFactory(object):
     """A factory of HTM nodes."""
-    def make_node(self, uName, uNodeType):
+    def make_node(self, uName, uType, uNodeSpec):
         ## initialize the new node's state with common structs
         state = {'name' : uName,
                  'coincidences' : np.array([[]]),
                  'input_msg'    : np.array([]),
                  'output_msg'   : np.array([]),
-                 'k'            : None }
+                 'k'            : None,
+                 
+                 'distance_thr' : uNodeSpec['distance_thr'],
+                 }
         
         ## then, add type-dependent structs
-        if uNodeType == ENTRY  or uNodeType == INTERMEDIATE:
+        if uType == ENTRY  or uType == INTERMEDIATE:
             state['temporal_groups'] = None
             state['seen'] = np.array([])
             state['TAM'] = np.array([[]])
             state['PCG'] = np.array([[]])
             state['k_prev'] = []
+
+            ## if one wishes to change clustering algorithms,
+            ## these params should be created by a factory
+            state['transition_memory_size'] = uNodeSpec['transition_memory_size']
+            state['top_neighbours'] = uNodeSpec['top_neighbours']
+            state['max_group_size'] = uNodeSpec['max_group_size']
+            state['min_group_size'] = uNodeSpec['min_group_size']
             
-        else: ## uNodeType == OUTPUT
+        else: ## uType == OUTPUT
             state['cls_prior_prob'] = np.array([])
             state['PCW'] = np.array([[]])
 
         ## last, add type-dependent algorithms
         strategy = {}
-        if uNodeType == ENTRY:
+        if uType == ENTRY:
             strategy['trainer'] = EntrySpatialPooler()
             strategy['finalizer'] = TemporalPooler()
             strategy['inference_maker'] = EntryInferenceMaker()
             
-        elif uNodeType == INTERMEDIATE:
+        elif uType == INTERMEDIATE:
             strategy['trainer'] = IntermediateSpatialPooler()
             strategy['finalizer'] = TemporalPooler()
             strategy['inference_maker'] = IntermediateInferenceMaker()
 
-        elif uNodeType == OUTPUT:
+        elif uType == OUTPUT:
             strategy['trainer'] = OutputSpatialPooler()
             strategy['finalizer'] = TemporalPooler()
             strategy['inference_maker'] = OutputInferenceMaker()
@@ -155,9 +164,9 @@ class NetworkBuilder(object):
         
     def build(self):
         """Build the network."""
-        layers_spec = [INTERMEDIATE for s in self.spec]
-        layers_spec[0] = ENTRY
-        layers_spec[-1] = OUTPUT
+        layers_type = [INTERMEDIATE for s in self.spec]
+        layers_type[0] = ENTRY
+        layers_type[-1] = OUTPUT
         layers = []
         
         ## iterate over layers to create
@@ -172,7 +181,9 @@ class NetworkBuilder(object):
                 layer.nodes.append([])
 
                 for l in range(width):
-                    node = self.node_factory.make_node((k,l), layers_spec[i])
+                    node = self.node_factory.make_node((k,l), 
+                                                       layers_type[i],
+                                                       self.spec[i])
                     layer.nodes[k].append(node)
                     
             layers.append(layer)
@@ -203,12 +214,17 @@ if __name__ == "__main__":
 
     for i in range(len(htm.layers[0].nodes)):
         for j in range(len(htm.layers[0].nodes[i])):
-            htm.layers[0].nodes[i][j].input_channel.put("get_output")
+            htm.layers[0].nodes[i][j].input_channel.put(("train",
+                                                         {'temporal_gap' : False}))
 
-    for i in range(len(htm.layers[0].nodes)):
-        for j in range(len(htm.layers[0].nodes[i])):
-            res = htm.layers[0].nodes[i][j].output_channel.get()
-            print res
+    # for i in range(len(htm.layers[0].nodes)):
+    #     for j in range(len(htm.layers[0].nodes[i])):
+    #         htm.layers[0].nodes[i][j].input_channel.put("get_output")
+
+    # for i in range(len(htm.layers[0].nodes)):
+    #     for j in range(len(htm.layers[0].nodes[i])):
+    #         res = htm.layers[0].nodes[i][j].output_channel.get()
+    #         print res
 
 
     # for i in range(len(htm.layers[0].nodes)):
