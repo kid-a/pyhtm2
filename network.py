@@ -36,11 +36,15 @@ class Node(Process):
         self.output_channel = Queue()
         
     def set_state(self, uState):
+        """Set the state of a node. This operation makes sense only for all nodes
+        except the output."""
         self.state['coincidences'] = uState['coincidences']
         self.state['temporal_groups'] = uState['temporal_groups']
         self.state['PCG'] = uState['PCG']
 
     def clone_state(self):
+        """Clone a node state. This operation makes sense only for all nodes
+        except the output."""
         s = {}
         s['coincidences'] = self.state['coincidences']
         s['temporal_groups'] = self.state['temporal_groups']
@@ -53,7 +57,9 @@ class Node(Process):
             #debug_print(str(self.state['name']) + str(msg))
 
             if msg == "finalize":
-                pass
+                debug_print("Finalizing node " + str(self.state['name']))
+                self.strategy['finalizer'].finalize(self.state)
+                self.output_channel.put("ok")
 
             elif msg == "inference":
                 pass
@@ -102,20 +108,12 @@ class Layer(object):
         self.node_sharing = False
 
     def train(self, uInputInfo):
+        """Train the layer on the current input pattern."""
         if self.node_sharing:
             ## train just one node,
             self.nodes[0][0].input_channel.put(("train", uInputInfo))
             self.nodes[0][0].output_channel.get()
             
-            ## then clone its state
-            self.nodes[0][0].input_channel.put("clone_state")
-            state = self.nodes[0][0].output_channel.get()
-
-            for i in range(len(self.nodes)):
-                for j in range(len(self.nodes[i])):
-                    if i == 0 and j == 0: continue
-                    self.nodes[i][j].input_channel.put(("set_state", state))
-
         else:
             ## start each node's training
             for i in range(len(self.nodes)):
@@ -127,7 +125,34 @@ class Layer(object):
                 for j in range(len(self.nodes[i])):
                     self.nodes[i][j].output_channel.get()
         
-    def finalize(self): pass
+    def finalize(self):
+        """Finalize training on each node."""
+        if self.node_sharing:
+            ## finalize just one node,
+            self.nodes[0][0].input_channel.put("finalize")
+            self.nodes[0][0].output_channel.get()
+
+            ## then clone its state
+            ## into all the other nodes
+            self.nodes[0][0].input_channel.put("clone_state")
+            state = self.nodes[0][0].output_channel.get()
+
+            for i in range(len(self.nodes)):
+                for j in range(len(self.nodes[i])):
+                    if i == 0 and j == 0: continue
+                    self.nodes[i][j].input_channel.put(("set_state", state))
+
+        else:
+            ## start each node's finalization procedure
+            for i in range(len(self.nodes)):
+                for j in range(len(self.nodes[i])):
+                    self.nodes[i][j].input_channel.put("finalize")
+
+            ## wait for the finalization to be completed
+            for i in range(len(self.nodes)):
+                for j in range(len(self.nodes[i])):
+                    self.nodes[i][j].output_channel.get()
+
     def inference(self): pass
     
 
@@ -167,7 +192,8 @@ class Network(object):
     def expose(self, uInput):
         """Expose an input pattern to first layer's nodes."""
         (input_height, input_width) = uInput.shape
-        (layer_height, layer_width) = (len(self.layers[0].nodes), len(self.layers[0].nodes))
+        (layer_height, layer_width) = (len(self.layers[0].nodes), 
+                                       len(self.layers[0].nodes))
         
         patch_height = input_height / layer_height
         patch_width = input_width / layer_width
@@ -313,8 +339,11 @@ if __name__ == "__main__":
     image = usps.read("data_sets/train100/0/1.bmp")
     htm.expose(image)
     htm.layers[0].train({'temporal_gap' : False})
+    htm.layers[0].train({'temporal_gap' : False})
+    htm.layers[0].train({'temporal_gap' : False})
+    htm.layers[0].finalize()
             
-    # for i in range(len(htm.layers[0].nodes)):
+    # for i1 in range(len(htm.layers[0].nodes)):
     #     for j in range(len(htm.layers[0].nodes[i])):
     #         htm.layers[0].nodes[i][j].input_channel.put(("set_input",
     #                                                      np.array([1,2,3,4])))
