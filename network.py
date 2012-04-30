@@ -1,10 +1,8 @@
 ## global import ---------------------------------------------------------------
 from multiprocessing import Process
 from multiprocessing import Queue
-from multiprocessing import Event
 import numpy as np
 import time
-import sys
 
 
 ## local import ----------------------------------------------------------------
@@ -37,6 +35,18 @@ class Node(Process):
         self.input_channel = Queue()
         self.output_channel = Queue()
         
+    def set_state(self, uState):
+        self.state['coincidences'] = uState['coincidences']
+        self.state['temporal_groups'] = uState['temporal_groups']
+        self.state['PCG'] = uState['PCG']
+
+    def clone_state(self):
+        s = {}
+        s['coincidences'] = self.state['coincidences']
+        s['temporal_groups'] = self.state['temporal_groups']
+        s['PCG'] = self.state['PCG']
+        return s
+        
     def run(self):
         while True:
             msg = self.input_channel.get()
@@ -50,18 +60,33 @@ class Node(Process):
 
             elif msg == "get_output":
                 self.output_channel.put(self.state['output_msg'])
+                
+            elif msg == "clone_state":
+                debug_print("Cloning node " + str(self.state['name']) + " state")
+                self.output_channel.put(self.clone_state())
 
+            elif msg[0] == "set_state":
+                debug_print("Setting state on node " + str(self.state['name']))
+                self.set_state(msg[1])
+                
             elif msg[0] == "train":
                 debug_print("Training node " + str(self.state['name']))
                 self.strategy['trainer'].train(self.state, msg[1])
-                debug_print("Node " + str(self.state['name']) + " new coincidences:" +
-                            str(self.state['coincidences']))
+
+                debug_print("Node " + str(self.state['name']) + \
+                                " new coincidences:" + \
+                                str(self.state['coincidences']))
+
+                self.output_channel.put("ok")
             
             elif msg[0] == "set_input":
                 self.state['input_msg'] = msg[1]
+
                 debug_print(str(self.state['name']) + \
                                 " new input: " + \
                                 str(self.state['input_msg']))
+
+                self.output_channel.put("ok")
 
             else:
                 debug_print(str(self.state['name']) + \
@@ -74,8 +99,34 @@ class Node(Process):
 class Layer(object):
     def __init__(self, *args, **kwargs):
         self.nodes = [[]]
+        self.node_sharing = False
 
-    def train(self): pass
+    def train(self, uInputInfo):
+        if self.node_sharing:
+            ## train just one node,
+            self.nodes[0][0].input_channel.put(("train", uInputInfo))
+            self.nodes[0][0].output_channel.get()
+            
+            ## then clone its state
+            self.nodes[0][0].input_channel.put("clone_state")
+            state = self.nodes[0][0].output_channel.get()
+
+            for i in range(len(self.nodes)):
+                for j in range(len(self.nodes[i])):
+                    if i == 0 and j == 0: continue
+                    self.nodes[i][j].input_channel.put(("set_state", state))
+
+        else:
+            ## start each node's training
+            for i in range(len(self.nodes)):
+                for j in range(len(self.nodes[i])):
+                    self.nodes[i][j].input_channel.put(("train", uInputInfo))
+
+            ## wait for the training to be finished
+            for i in range(len(self.nodes)):
+                for j in range(len(self.nodes[i])):
+                    self.nodes[i][j].output_channel.get()
+        
     def finalize(self): pass
     def inference(self): pass
     
@@ -87,10 +138,58 @@ class Network(object):
     def __init__(self, *args, **kwargs):
         self.layers = []
 
-    def train(self): pass
-    def finalize(self): pass
+        def train(self, uTrainingSequences):
+            """Train the network on the given training sequences."""
+            layers_type = [INTERMEDIATE for s in self.spec]
+            layers_type[0] = ENTRY
+            layers_type[-1] = OUTPUT
+
+            ## for each layer
+            for i in range(len(self.layers)): 
+
+                ## for each training sequence
+                for pattern in uTrainingSequences[layers_type[i]]:
+                    (input_raw, input_info) = pattern
+
+                    self.expose(input_raw)
+                    
+                    for m in range(i):
+                        self.layers[m].inference()
+                        self.propagate(m, m + 1)
+
+                    self.layers[i].train(input_info)
+
+                self.layers[i].finalize()
+
     def inference(self): pass
-    def propagate(sefl): pass
+    def propagate(self): pass
+    
+    def expose(self, uInput):
+        """Expose an input pattern to first layer's nodes."""
+        (input_height, input_width) = uInput.shape
+        (layer_height, layer_width) = (len(self.layers[0].nodes), len(self.layers[0].nodes))
+        
+        patch_height = input_height / layer_height
+        patch_width = input_width / layer_width
+    
+        starting_point_h = 0;
+        starting_point_w = 0;
+        
+        for i in range(layer_height):
+            for j in range(layer_width):
+                node = self.layers[0].nodes[i][j]
+                patch = uInput[starting_point_h : starting_point_h + patch_height,
+                               starting_point_w : starting_point_w + patch_width]
+                
+                patch = np.reshape(patch, (1, patch.size))
+                
+                node.input_channel.put(("set_input", patch))
+                node.output_channel.get()
+
+                starting_point_w += patch_width
+                
+            starting_point_w = 0
+            starting_point_h += patch_height
 
 
 ## -----------------------------------------------------------------------------
@@ -176,6 +275,9 @@ class NetworkBuilder(object):
             
             layer.nodes = []
 
+            try: layer.node_sharing = self.spec[i]['node_sharing']
+            except: pass
+
             ## create nodes
             for k in range(height):
                 layer.nodes.append([])
@@ -197,25 +299,49 @@ class NetworkBuilder(object):
 ## main/tests ------------------------------------------------------------------
 if __name__ == "__main__":
     import config
+    import usps
     import time
     
-    builder = NetworkBuilder(config.usps_net)
+    builder = NetworkBuilder(config.test_net)
     htm = builder.build()
     
     t0 = time.time()
     for i in range(len(htm.layers[0].nodes)):
         for j in range(len(htm.layers[0].nodes[i])):
             htm.layers[0].nodes[i][j].start()
-            
-    for i in range(len(htm.layers[0].nodes)):
-        for j in range(len(htm.layers[0].nodes[i])):
-            htm.layers[0].nodes[i][j].input_channel.put(("set_input",
-                                                         np.array([1,2,3,4])))
 
-    for i in range(len(htm.layers[0].nodes)):
-        for j in range(len(htm.layers[0].nodes[i])):
-            htm.layers[0].nodes[i][j].input_channel.put(("train",
-                                                         {'temporal_gap' : False}))
+    image = usps.read("data_sets/train100/0/1.bmp")
+    htm.expose(image)
+    htm.layers[0].train({'temporal_gap' : False})
+            
+    # for i in range(len(htm.layers[0].nodes)):
+    #     for j in range(len(htm.layers[0].nodes[i])):
+    #         htm.layers[0].nodes[i][j].input_channel.put(("set_input",
+    #                                                      np.array([1,2,3,4])))
+            
+
+    # for i in range(len(htm.layers[0].nodes)):
+    #     for j in range(len(htm.layers[0].nodes[i])):
+    #         htm.layers[0].nodes[i][j].input_channel.put(("set_input",
+    #                                                      np.array([4,5,6,7])))
+
+    # htm.layers[0].train({'temporal_gap' : False})
+
+    # for i in range(len(htm.layers[0].nodes)):
+    #     for j in range(len(htm.layers[0].nodes[i])):
+    #         htm.layers[0].nodes[i][j].input_channel.put(("set_input",
+    #                                                      np.array([8,9,10,11])))
+
+    # htm.layers[0].train({'temporal_gap' : False})
+    
+    
+    
+    
+
+    # for i in range(len(htm.layers[0].nodes)):
+    #     for j in range(len(htm.layers[0].nodes[i])):
+    #         htm.layers[0].nodes[i][j].input_channel.put(("train",
+    #                                                      {'temporal_gap' : False}))
 
     # for i in range(len(htm.layers[0].nodes)):
     #     for j in range(len(htm.layers[0].nodes[i])):
@@ -245,28 +371,7 @@ if __name__ == "__main__":
 #     def __init__(self, *args, **kwargs):
 #         self.layers = []
         
-#     def expose(self, uInput):
-#         (input_height, input_width) = uInput.shape
-#         (layer_height, layer_width) = (len(self.layers[0].nodes), len(self.layers[0].nodes))
-        
-#         patch_height = input_height / layer_height
-#         patch_width = input_width / layer_width
-    
-#         starting_point_h = 0;
-#         starting_point_w = 0;
-        
-#         for i in range(layer_height):
-#             for j in range(layer_width):
-#                 node = self.layers[0].nodes[i][j]
-#                 patch = uInput[starting_point_h : starting_point_h + patch_height,
-#                                starting_point_w : starting_point_w + patch_width]
-                
-#                 node.input_msg = np.reshape(patch, (1, patch.size))
-                
-#                 starting_point_w += patch_width
-                
-#             starting_point_w = 0
-#             starting_point_h += patch_height
+
 
         
 #     def propagate(self, uFrom, uTo):
@@ -371,7 +476,7 @@ if __name__ == "__main__":
 #         return self.layers[-1].inference()
 
 
-# class Layer(object):
+# class Layerobject):
 #     def __init__(self, *args, **kwargs):
 #         self.type = None
 #         self.nodes = []

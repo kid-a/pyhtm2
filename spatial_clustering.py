@@ -31,7 +31,12 @@ class SpatialPooler(object):
         """Train a node on the current input."""
         ## select the active threshold
         self.select_active_coinc(uNodeState)
+        self.update_TAM(uNodeState, uInputInfo)
+        
+    def select_active_coinc(self, uNodeState): pass
 
+    def update_TAM(self, uNodeState, uInputInfo):
+        """Update the temporal activation matrix (TAM)."""
         TAM = uNodeState['TAM']
         k_prev = uNodeState['k_prev']
         k = uNodeState['k']
@@ -50,9 +55,7 @@ class SpatialPooler(object):
         ## update the node's state
         uNodeState['TAM'] = TAM
         uNodeState['k_prev'] = k_prev
-
         
-    def select_active_coinc(self, uNodeState): pass
 
 
 ## -----------------------------------------------------------------------------
@@ -71,7 +74,7 @@ class EntrySpatialPooler(SpatialPooler):
         ## if processing the first input pattern,
         ## immediately make a new coincidence and return
         if coincidences.size == 0:
-            coincidences = np.array(input_msg)
+            coincidences = np.array([input_msg])
             k = 0
             seen = np.array([1])
             TAM = np.array([[0]])
@@ -80,7 +83,7 @@ class EntrySpatialPooler(SpatialPooler):
             ## compute the distance of each coincidence from the
             ## given input
             distances = np.sum(np.abs(coincidences - \
-                                          input_msg)**2,axis=-1)**(1./2)
+                                          input_msg) ** 2, axis=-1) ** (1./2)
             
             ## find the minimum
             k = np.argmin(distances)
@@ -136,7 +139,6 @@ class IntermediateSpatialPooler(SpatialPooler):
 
                 ## resize TAM
                 uNode.TAM = utils.inc_rows_cols(uNode.TAM)
-                print uNode.coincidences.shape
                 
             ## increment the seen vector
             uNode.seen[uNode.k] += 1
@@ -159,6 +161,8 @@ class OutputSpatialPooler(SpatialPooler):
             uNode.PCW.resize((rows + delta_r, cols + delta_c), refcheck=False)
             uNode.PCW[uNode.k, uClass] = 1
         
+            
+    def update_TAM(self, uNodeState): pass
 
     def select_active_coinc(self, uNode):
         """Given a node, selects its current active coincidence."""
@@ -183,7 +187,8 @@ class OutputSpatialPooler(SpatialPooler):
                 uNode.coincidences = np.vstack((uNode.coincidences, w))
                 (uNode.k, _) = uNode.coincidences.shape
                 uNode.k -= 1
-                print uNode.coincidences.shape
+                
+
         
 
 # if __name__ == "__main__":
