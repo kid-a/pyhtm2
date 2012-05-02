@@ -81,6 +81,7 @@ class Node(Process):
                 
             elif msg[0] == "train":
                 debug_print("Training node " + str(self.state['name']))
+
                 self.strategy['trainer'].train(self.state, msg[1])
 
                 debug_print("Node " + str(self.state['name']) + \
@@ -176,28 +177,34 @@ class Network(object):
     def __init__(self, *args, **kwargs):
         self.layers = []
 
-        def train(self, uTrainingSequences):
-            """Train the network on the given training sequences."""
-            layers_type = [INTERMEDIATE for s in self.spec]
-            layers_type[0] = ENTRY
-            layers_type[-1] = OUTPUT
+    def start(self):
+        for layer in self.layers:
+            for i in range(len(layer.nodes)):
+                for j in range(len(layer.nodes[i])):
+                    layer.nodes[i][j].start()
 
-            ## for each layer
-            for i in range(len(self.layers)): 
+    def train(self, uTrainingSequences):
+        """Train the network on the given training sequences."""
+        layers_type = [INTERMEDIATE for s in self.spec]
+        layers_type[0] = ENTRY
+        layers_type[-1] = OUTPUT
+        
+        ## for each layer
+        for i in range(len(self.layers)): 
 
-                ## for each training sequence
-                for pattern in uTrainingSequences[layers_type[i]]:
-                    (input_raw, input_info) = pattern
+            ## for each training sequence
+            for pattern in uTrainingSequences[layers_type[i]]:
+                (input_raw, input_info) = pattern
 
-                    self.expose(input_raw)
+                self.expose(input_raw)
                     
-                    for m in range(i):
-                        self.layers[m].inference()
-                        self.propagate(m, m + 1)
+                for m in range(i):
+                    self.layers[m].inference()
+                    self.propagate(m, m + 1)
 
-                    self.layers[i].train(input_info)
+                self.layers[i].train(input_info)
 
-                self.layers[i].finalize()
+            self.layers[i].finalize()
 
     def inference(self): pass
     def propagate(self): pass
@@ -348,11 +355,10 @@ if __name__ == "__main__":
     builder = NetworkBuilder(config.test_net)
     htm = builder.build()
     
+    htm.start()
     t0 = time.time()
-    for i in range(len(htm.layers[0].nodes)):
-        for j in range(len(htm.layers[0].nodes[i])):
-            htm.layers[0].nodes[i][j].start()
 
+    ## train layer 0
     image = usps.read("data_sets/train100/0/1.bmp")
     htm.expose(image)
     htm.layers[0].train({'temporal_gap' : False})
@@ -367,7 +373,15 @@ if __name__ == "__main__":
     htm.layers[0].train({'temporal_gap' : False})
 
     htm.layers[0].finalize()
+
+    ## train layer 1
+    image = usps.read("data_sets/train100/0/1.bmp")
+    htm.expose(image)
     htm.layers[0].inference()
+    print htm.layers[1].nodes
+    htm.layers[1].train({'temporal_gap' : False})
+    #htm.layers[1].train({'temporal_gap' : False})
+
             
     # for i1 in range(len(htm.layers[0].nodes)):
     #     for j in range(len(htm.layers[0].nodes[i])):
