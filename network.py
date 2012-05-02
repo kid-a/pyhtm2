@@ -2,6 +2,7 @@
 from multiprocessing import Process
 from multiprocessing import Queue
 import numpy as np
+import math
 import time
 
 
@@ -75,10 +76,15 @@ class Node(Process):
                 debug_print("Cloning node " + str(self.state['name']) + " state")
                 self.output_channel.put(self.clone_state())
 
+            elif msg == "reset_input":
+                self.state['input_msg'] = []
+                debug_print(str(self.state['name']) + \
+                                " input has been reset")
+
             elif msg[0] == "set_state":
                 debug_print("Setting state on node " + str(self.state['name']))
                 self.set_state(msg[1])
-                
+                                
             elif msg[0] == "train":
                 debug_print("Training node " + str(self.state['name']))
 
@@ -98,6 +104,13 @@ class Node(Process):
                                 str(self.state['input_msg']))
 
                 self.output_channel.put("ok")
+
+            elif msg[0] == "append_input":
+                self.state['input_msg'].append(msg[1])
+
+                debug_print(str(self.state['name']) + \
+                                " new input: " + \
+                                str(self.state['input_msg']))
 
             else:
                 debug_print(str(self.state['name']) + \
@@ -207,7 +220,31 @@ class Network(object):
             self.layers[i].finalize()
 
     def inference(self): pass
-    def propagate(self): pass
+
+    def propagate(self, uFrom, uTo): 
+        f = self.layers[uFrom]
+        t = self.layers[uTo]
+        
+        for i in range(len(t.nodes)):
+            for j in range(len(t.nodes[i])):
+                t.nodes[i][j].input_channel.put("reset_input")
+
+        if len(t.nodes[0]) == 1: ## if last node
+            for i in range(len(f.nodes)):
+                for j in range(len(f.nodes[i])):
+                    f.nodes[i][j].input_channel.put("get_output")
+                    msg = f.nodes[i][j].output_channel.get()
+                    t.nodes[0][0].input_channel.put(("append_input", msg))
+
+        else:
+            for i in range(len(f.nodes)):
+                upper_i = math.floor(i / float(len(t.nodes)))
+            
+                for j in range(len(f.nodes[i])):
+                    upper_j = math.floor(j / float(len(t.nodes[0])))
+                    f.nodes[i][j].input_channel.put("get_output")
+                    msg = f.nodes[i][j].output_channel.get()
+                    t.nodes[int(upper_i)][int(upper_j)].input_channel.put(("append_input", msg))
     
     def expose(self, uInput):
         """Expose an input pattern to first layer's nodes."""
@@ -245,9 +282,9 @@ class NodeFactory(object):
     """A factory of HTM nodes."""
     def make_node(self, uName, uType, uNodeSpec):
         ## initialize the new node's state with common structs
-        state = {'name' : uName,
-                 'coincidences' : np.array([[]]),
+        state = {'name'         : uName,
                  'input_msg'    : np.array([]),
+                 'coincidences' : np.array([[]]),
                  'output_msg'   : np.array([]),
                  'k'            : None,
                  
@@ -271,6 +308,7 @@ class NodeFactory(object):
             
             ## !FIXME better ask forgiveness than permission?
             if uType == ENTRY:
+                state['input_msg'] = np.array([])
                 state['sigma'] = uNodeSpec['sigma']
             
         else: ## uType == OUTPUT
@@ -378,8 +416,22 @@ if __name__ == "__main__":
     image = usps.read("data_sets/train100/0/1.bmp")
     htm.expose(image)
     htm.layers[0].inference()
-    print htm.layers[1].nodes
+    htm.propagate(0, 1)
     htm.layers[1].train({'temporal_gap' : False})
+
+    image = usps.read("data_sets/train100/0/3.bmp")
+    htm.expose(image)
+    htm.layers[0].inference()
+    htm.propagate(0, 1)
+    htm.layers[1].train({'temporal_gap' : True})
+
+    image = usps.read("data_sets/train100/0/2.bmp")
+    htm.expose(image)
+    htm.layers[0].inference()
+    htm.propagate(0, 1)
+    htm.layers[1].train({'temporal_gap' : False})
+    
+    htm.layers[1].finalize()
     #htm.layers[1].train({'temporal_gap' : False})
 
             

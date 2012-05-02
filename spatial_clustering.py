@@ -79,7 +79,6 @@ class SpatialPooler(object):
         uNodeState['k_prev'] = k_prev
         
 
-
 ## -----------------------------------------------------------------------------
 ## EntrySpatialPooler Class
 ## -----------------------------------------------------------------------------
@@ -135,7 +134,9 @@ class IntermediateSpatialPooler(SpatialPooler):
         input_msg = uNodeState['input_msg']
 
         if uFirstCoinc:
+            print "****", input_msg
             coincidences = np.array([compute_widx(input_msg)])
+            print "*****", coincidences
             k = 0
             seen = np.array([1])
             TAM = np.array([[0]])
@@ -159,9 +160,9 @@ class IntermediateSpatialPooler(SpatialPooler):
         uNodeState['TAM'] = TAM
         
     def closest_coincidence(self, uCoincidences, uInputMsg): 
-        """Compute the distance of each coincidence from a given input."""
+        """Compute the distance of each coincidence from a given input."""       
         w = compute_widx(uInputMsg)
-        distances = np.apply_along_axis(widx_distance, 1, (coincidences - w))
+        distances = np.apply_along_axis(widx_distance, 1, (uCoincidences - w))
         k = np.argmin(distances)
         minimum = distances[k]
         

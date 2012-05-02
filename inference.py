@@ -50,7 +50,7 @@ class EntryInferenceMaker(InferenceMaker):
         PCG = uNodeState['PCG']
         
         y = self.dens_over_coinc(coinc, input_msg, sigma)
-        y = utils.normalize_over_rows(np.array([y]))
+        y = (utils.normalize_over_rows(np.array([y])))[0]
         z = self.dens_over_matrix(y, PCG)
         
         uNodeState['output_msg'] = z
