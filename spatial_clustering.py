@@ -29,7 +29,7 @@ class SpatialPooler(object):
     """Implements the algorithms for clustering coincidences."""    
     def train(self, uNodeState, uInputInfo):
         """Train a node on the current input."""
-        ## select the active threshold
+        ## select the active coincidence
         self.select_active_coinc(uNodeState)
         self.update_TAM(uNodeState, uInputInfo)
                 
@@ -52,10 +52,45 @@ class SpatialPooler(object):
         uNodeState['k'] = k
 
         ## increment the seen vector
-        uNodeState['seen'][k] += 1
+        try: uNodeState['seen'][k] += 1
+        except: pass
                 
-    def make_new_coincidence(self, uNodeState, uFirstCoinc=False): pass
-    def closest_coincidence(self, uCoincidences, uInputMsg): pass
+    def make_new_coincidence(self, uNodeState, uFirstCoinc=False):
+        """Make a new coincidence and updates the size of the node's internal matrices."""
+        input_msg = uNodeState['input_msg']
+
+        if uFirstCoinc:
+            coincidences = np.array([compute_widx(input_msg)])
+            k = 0
+            seen = np.array([1])
+            TAM = np.array([[0]])
+            
+        else:
+            coincidences = uNodeState['coincidences']
+            TAM = uNodeState['TAM']
+            seen = uNodeState['seen']
+
+            coincidences = np.vstack((coincidences, w))
+            (k, _) = coincidences.shape
+            k -= 1
+            seen = np.hstack((seen, 0))
+            
+            ## resize TAM
+            TAM = utils.inc_rows_cols(TAM)
+            
+        ## update the node's state
+        uNodeState['coincidences'] = coincidences
+        uNodeState['seen'] = seen
+        uNodeState['TAM'] = TAM
+
+    def closest_coincidence(self, uCoincidences, uInputMsg): 
+        """Compute the distance of each coincidence from a given input."""       
+        w = compute_widx(uInputMsg)
+        distances = np.apply_along_axis(widx_distance, 1, (uCoincidences - w))
+        k = np.argmin(distances)
+        minimum = distances[k]
+        
+        return (k, minimum)
 
     def update_TAM(self, uNodeState, uInputInfo):
         """Update the temporal activation matrix (TAM)."""
@@ -129,89 +164,54 @@ class EntrySpatialPooler(SpatialPooler):
 ## IntermediateSpatialPooler Class
 ## -----------------------------------------------------------------------------
 class IntermediateSpatialPooler(SpatialPooler):
-    def make_new_coincidence(self, uNodeState, uFirstCoinc=False):
-        """Make a new coincidence and updates the size of the node's internal matrices."""
-        input_msg = uNodeState['input_msg']
-
-        if uFirstCoinc:
-            print "****", input_msg
-            coincidences = np.array([compute_widx(input_msg)])
-            print "*****", coincidences
-            k = 0
-            seen = np.array([1])
-            TAM = np.array([[0]])
-            
-        else:
-            coincidences = uNodeState['coincidences']
-            TAM = uNodeState['TAM']
-            seen = uNodeState['seen']
-
-            coincidences = np.vstack((coincidences, w))
-            (k, _) = coincidences.shape
-            k -= 1
-            seen = np.hstack((seen, 0))
-            
-            ## resize TAM
-            TAM = utils.inc_rows_cols(TAM)
-
-        ## update the node's state
-        uNodeState['coincidences'] = coincidences
-        uNodeState['seen'] = seen
-        uNodeState['TAM'] = TAM
-        
-    def closest_coincidence(self, uCoincidences, uInputMsg): 
-        """Compute the distance of each coincidence from a given input."""       
-        w = compute_widx(uInputMsg)
-        distances = np.apply_along_axis(widx_distance, 1, (uCoincidences - w))
-        k = np.argmin(distances)
-        minimum = distances[k]
-        
-        return (k, minimum)        
+    pass
 
 
 ## -----------------------------------------------------------------------------
 ## OutputSpatialPooler Class
 ## -----------------------------------------------------------------------------
 class OutputSpatialPooler(SpatialPooler):
-    def train_node(self, uNode, uClass, uTemporalGap=False):
-        """Train a node on the current input."""
-        ## select the active threshold
-        self.select_active_coinc(uNode)
+    def train(self, uNodeState, uInputInfo):
+        """Train the output node on the current input."""
+        ## select the active coincidence
+        self.select_active_coinc(uNodeState)
+        self.update_PCW(uNodeState, uInputInfo)
+
+    def make_new_coincidence(self, uNodeState, uFirstCoinc=False):
+        """Make a new coincidence and updates the size of the node's
+        internal matrices."""
+        input_msg = uNodeState['input_msg']
+
+        if uFirstCoinc:
+            coincidences = np.array([compute_widx(input_msg)])
+            k = 0
+            
+        else:
+            coincidences = uNodeState['coincidences']
+            coincidences = np.vstack((coincidences, w))
+            (k, _) = coincidences.shape
+            k -= 1
+            
+        ## update the node's state
+        uNodeState['coincidences'] = coincidences
         
-        ## update the PCW matrix
-        try: uNode.PCW[uNode.k, uClass] += 1
+        
+    def update_PCW(self, uNodeState, uInputInfo):
+        """Update the PCW matrix."""
+        PCW = uNodeState['PCW']
+        k = uNodeState['k']
+        cls = uInputInfo['class']
+        
+        try: PCW[k, cls] += 1
         except:
-            (rows, cols) = uNode.PCW.shape
-            (delta_r, delta_c) = (uNode.k + 1 - rows, uClass + 1 - cols)
+            (rows, cols) = PCW.shape
+            (delta_r, delta_c) = (k + 1 - rows, cls + 1 - cols)
             if delta_r < 0: delta_r = 0
             if delta_c < 0: delta_c = 0
             
-            uNode.PCW.resize((rows + delta_r, cols + delta_c), refcheck=False)
-            uNode.PCW[uNode.k, uClass] = 1
-        
+            PCW.resize((rows + delta_r, cols + delta_c), refcheck=False)
+            PCW[k, cls] = 1
+            
+        uNodeState['PCW'] = PCW
             
     def update_TAM(self, uNodeState): pass
-
-    def select_active_coinc(self, uNode):
-        """Given a node, selects its current active coincidence."""
-        ## if processing the first input pattern,
-        ## immediately make a new coincidence and return
-        if uNode.coincidences.size == 0:
-            uNode.coincidences = np.array([compute_widx(uNode.input_msg)])
-            uNode.k = 0
-            
-        else:
-            ## compute the distance of each coincidence from the
-            ## given input
-            w = compute_widx(uNode.input_msg)
-            distances = np.apply_along_axis(widx_distance, 1,
-                                            (uNode.coincidences - w))
-            uNode.k = np.argmin(distances)
-            minimum = distances[uNode.k]
-            
-            ## if the closest coincidence is not close enough,
-            ## make a new coincidence
-            if minimum > self.threshold:
-                uNode.coincidences = np.vstack((uNode.coincidences, w))
-                (uNode.k, _) = uNode.coincidences.shape
-                uNode.k -= 1

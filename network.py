@@ -275,6 +275,19 @@ class Network(object):
             starting_point_h += patch_height
 
 
+class OutputNodeFinalizer(object):
+    """Implements the algorithm for computing the PCW in the output node."""
+    def finalize(self, uNodeState):
+        PCW = uNodeState['PCW']
+
+        s = PCW.sum(axis=0)
+        total = PCW.sum()
+        cls_prior_prob = s / float(total)
+        
+        ## normalize the PCW matrix
+        uNodeState['PCW'] = utils.normalize_over_cols(PCW)
+
+
 ## -----------------------------------------------------------------------------
 ## NodeFactory Class
 ## -----------------------------------------------------------------------------
@@ -329,7 +342,7 @@ class NodeFactory(object):
 
         elif uType == OUTPUT:
             strategy['trainer'] = OutputSpatialPooler()
-            strategy['finalizer'] = TemporalPooler()
+            strategy['finalizer'] = OutputNodeFinalizer()
             strategy['inference_maker'] = OutputInferenceMaker()
             
         ## the state is ready, make the node
@@ -432,7 +445,22 @@ if __name__ == "__main__":
     htm.layers[1].train({'temporal_gap' : False})
     
     htm.layers[1].finalize()
-    #htm.layers[1].train({'temporal_gap' : False})
+    
+    ## train layer 2
+    image = usps.read("data_sets/train100/0/1.bmp")
+    htm.expose(image)
+    htm.layers[0].inference()
+    htm.propagate(0, 1)
+    htm.layers[1].inference()
+    htm.propagate(1, 2)
+    htm.layers[2].train({'class' : 0})
+    
+    htm.layers[2].finalize()
+    
+
+    
+
+    
 
             
     # for i1 in range(len(htm.layers[0].nodes)):

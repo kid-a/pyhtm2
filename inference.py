@@ -11,7 +11,7 @@ import utils
 ## -----------------------------------------------------------------------------
 class InferenceMaker(object):
     """Abstract class representing an inference maker."""
-    def dens_over_coinc(self, uCoincidences, uCurrentInput, uSigma=None):
+    def dens_over_coinc(self, uCoincidences, uCurrentInput):
         (rows, cols) = uCoincidences.shape
         y = np.array([[]])
 
@@ -21,7 +21,7 @@ class InferenceMaker(object):
             for j in range(cols):
                 selected_coincidences = \
                     np.append(selected_coincidences, 
-                              uCurrentInput[j][0][uCoincidences[i,j]])
+                              uCurrentInput[j][uCoincidences[i,j]])
 
             y = np.append(y, np.prod(selected_coincidences))
             
@@ -66,8 +66,8 @@ class IntermediateInferenceMaker(InferenceMaker):
         input_msg = uNodeState['input_msg']
         PCG = uNodeState['PCG']
         
-        y = self.dens_over_coinc(coinc, input_msg, sigma)
-        y = utils.normalize_over_rows(y)
+        y = self.dens_over_coinc(coinc, input_msg)
+        y = utils.normalize_over_rows(y)[0]
         z = self.dens_over_matrix(y, PCG)
 
         uNodeState['output_msg'] = z
