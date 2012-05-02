@@ -62,7 +62,11 @@ class Node(Process):
                 self.output_channel.put("ok")
 
             elif msg == "inference":
-                pass
+                debug_print("Doing inference on node " + str(self.state['name']))
+                self.strategy['inference_maker'].inference(self.state)
+                debug_print("Node " + str(self.state['name']) + " output message: " +\
+                                str(self.state['output_msg']))
+                self.output_channel.put("ok")
 
             elif msg == "get_output":
                 self.output_channel.put(self.state['output_msg'])
@@ -153,8 +157,17 @@ class Layer(object):
                 for j in range(len(self.nodes[i])):
                     self.nodes[i][j].output_channel.get()
 
-    def inference(self): pass
-    
+    def inference(self):
+        """Perform inference on the current input."""
+        for i in range(len(self.nodes)):
+            for j in range(len(self.nodes[i])):
+                self.nodes[i][j].input_channel.put("inference")
+
+        ## wait for the finalization to be completed
+        for i in range(len(self.nodes)):
+            for j in range(len(self.nodes[i])):
+                self.nodes[i][j].output_channel.get()
+
 
 ## -----------------------------------------------------------------------------
 ## Network Class
@@ -207,8 +220,8 @@ class Network(object):
                 patch = uInput[starting_point_h : starting_point_h + patch_height,
                                starting_point_w : starting_point_w + patch_width]
                 
-                patch = np.reshape(patch, (1, patch.size))
-                
+                patch = np.reshape(patch, (1, patch.size))[0]
+    
                 node.input_channel.put(("set_input", patch))
                 node.output_channel.get()
 
@@ -248,6 +261,10 @@ class NodeFactory(object):
             state['top_neighbours'] = uNodeSpec['top_neighbours']
             state['max_group_size'] = uNodeSpec['max_group_size']
             state['min_group_size'] = uNodeSpec['min_group_size']
+            
+            ## !FIXME better ask forgiveness than permission?
+            if uType == ENTRY:
+                state['sigma'] = uNodeSpec['sigma']
             
         else: ## uType == OUTPUT
             state['cls_prior_prob'] = np.array([])
@@ -340,8 +357,17 @@ if __name__ == "__main__":
     htm.expose(image)
     htm.layers[0].train({'temporal_gap' : False})
     htm.layers[0].train({'temporal_gap' : False})
+
+    image = usps.read("data_sets/train100/0/2.bmp")
+    htm.expose(image)
     htm.layers[0].train({'temporal_gap' : False})
+
+    image = usps.read("data_sets/train100/0/3.bmp")
+    htm.expose(image)
+    htm.layers[0].train({'temporal_gap' : False})
+
     htm.layers[0].finalize()
+    htm.layers[0].inference()
             
     # for i1 in range(len(htm.layers[0].nodes)):
     #     for j in range(len(htm.layers[0].nodes[i])):

@@ -38,7 +38,7 @@ class InferenceMaker(object):
 ## -----------------------------------------------------------------------------
 class EntryInferenceMaker(InferenceMaker):
     """Implements inference algorithms for entry layer nodes."""
-    def dens_over_coinc(self, uCoincidences, uCurrentInput, uSigma=1):
+    def dens_over_coinc(self, uCoincidences, uCurrentInput, uSigma=1):        
         y = np.sum(np.abs(uCoincidences - uCurrentInput)**2,axis=-1)**(1./2)
         y = np.exp(- np.power(y, 2) / np.power(uSigma, 2))
         return y
@@ -50,7 +50,7 @@ class EntryInferenceMaker(InferenceMaker):
         PCG = uNodeState['PCG']
         
         y = self.dens_over_coinc(coinc, input_msg, sigma)
-        y = utils.normalize_over_rows(y)
+        y = utils.normalize_over_rows(np.array([y]))
         z = self.dens_over_matrix(y, PCG)
         
         uNodeState['output_msg'] = z
