@@ -1,6 +1,8 @@
+## global import ---------------------------------------------------------------
 from PIL import Image
 import numpy as np
 
+## local import ----------------------------------------------------------------
 import network
 
 WHITE = 255
@@ -32,13 +34,13 @@ def crop(image):
     return image
     
 
-def make_training_seq(uImage, uLayer, uWindowSize=(4,4)):
+def make_training_seq(uImage, uLayer, uWindowSize=(4,4), uClass=None):
     """Make a training sequence out of an image."""
     sequence = []
-    temporal_gaps = [0]
 
     if uLayer == network.ENTRY:
         ## crop the foreground object
+        (orig_rows, orig_cols) = uImage.shape
         image = crop(uImage)
         (rows, cols) = image.shape
 
@@ -63,14 +65,24 @@ def make_training_seq(uImage, uLayer, uWindowSize=(4,4)):
 
         for i in vertical_sequence:
             for j in horizontal_sequence:
-                sequence.append(image[i:(i + uWindowSize[0]), 
-                                      j:(j + uWindowSize[1])])
+                
+                if i == 0 and j == 0: temporal_gap = True
+                else: temporal_gap = False
+
+                img = image[i:(i + uWindowSize[0]), 
+                            j:(j + uWindowSize[1])]
+                
+                img = np.hstack((img, 
+                                 WHITE * np.ones((uWindowSize[0], 
+                                                  orig_cols - uWindowSize[1]))))
+                
+                img = np.vstack((img,
+                                 WHITE * np.ones((orig_rows - uWindowSize[0],
+                                                  orig_cols))))
+                    
+                sequence.append((img, {'temporal_gap' : temporal_gap}))
 
             horizontal_sequence.reverse()
-
-        ## mark the transition between the two scans
-        ## as a temporal gap
-        temporal_gaps.append(len(sequence))
 
         ## vertical scan
         horizontal_sequence = range(cols - uWindowSize[1] + 1)
@@ -79,12 +91,26 @@ def make_training_seq(uImage, uLayer, uWindowSize=(4,4)):
         
         for j in horizontal_sequence:
             for i in vertical_sequence:
-                sequence.append(image[i:(i + uWindowSize[0]), 
-                                      j:(j + uWindowSize[1])])
+
+                if i == 0 and j == 0: temporal_gap = True
+                else: temporal_gap = False
+
+                img = image[i:(i + uWindowSize[0]), 
+                            j:(j + uWindowSize[1])]
+
+                img = np.hstack((img, 
+                                 WHITE * np.ones((uWindowSize[0], 
+                                                  orig_cols - uWindowSize[1]))))
+                
+                img = np.vstack((img,
+                                 WHITE * np.ones((orig_rows - uWindowSize[0],
+                                                  orig_cols))))
+
+                sequence.append((img, {'temporal_gap' : temporal_gap}))
 
             vertical_sequence.reverse()
 
-        return (sequence, temporal_gaps)
+        return sequence
 
     else: ## uLayer == network.INTERMEDIATE | network.OUTPUT
         ## crop the foreground object
@@ -100,12 +126,23 @@ def make_training_seq(uImage, uLayer, uWindowSize=(4,4)):
                            image))
                 
         ## horizontal scan
-        direction = LEFT
+        direction = LEFT        
+        first = True
 
         while True:
             while True:
-                sequence.append(image)
+                if uLayer == network.INTERMEDIATE:
+                    if first: 
+                        temporal_gap = True
+                        first = False
 
+                    else: temporal_gap = False
+                    sequence.append((image, {'temporal_gap' : temporal_gap}))
+                                        
+                else: ## uLayer == network.OUTPUT
+                    sequence.append((image, {'class' : uClass}))
+
+                ## move the object
                 if direction == LEFT:
                     ## inner while termination condition
                     if abs(np.sum(image[:,0] - WHITE)) > 0: break
@@ -130,10 +167,7 @@ def make_training_seq(uImage, uLayer, uWindowSize=(4,4)):
             direction = not direction
                         
         if uLayer == network.OUTPUT:
-            return (sequence, temporal_gaps)
-
-        ## mark the transition between the two scans as a temporal gap
-        temporal_gaps.append(len(sequence))
+            return sequence
 
         ## crop the image, again
         image = crop(uImage)
@@ -148,10 +182,16 @@ def make_training_seq(uImage, uLayer, uWindowSize=(4,4)):
 
         ## vertical scan
         direction = UP
+        first = True
 
         while True:
             while True:
-                sequence.append(image)
+                if first: 
+                    temporal_gap = True
+                    first = False
+
+                else: temporal_gap = False
+                sequence.append((image, {'temporal_gap' : temporal_gap}))
 
                 if direction == UP:
                     ## inner while termination condition
@@ -176,10 +216,15 @@ def make_training_seq(uImage, uLayer, uWindowSize=(4,4)):
             ## invert the direction
             direction = not direction
 
-        return (sequence, temporal_gaps)
+        return sequence
 
 
 if __name__ == "__main__":
+    #i = read("data_sets/train/5/41.bmp")
+    #print len(make_training_seq(i, network.ENTRY))
+    # print make_training_seq(i, network.INTERMEDIATE)
+    # print make_training_seq(i, network.OUTPUT)
+
     # ## some tests
     # #i = read("data_sets/train/5/41.bmp")
     # i = WHITE * np.ones((24,24))
@@ -197,19 +242,19 @@ if __name__ == "__main__":
 
 
 
-    import os
-    import time
+    # import os
+    # import time
     
-    t0 = time.time()
+    # t0 = time.time()
 
-    sequences = []
-    basepath = 'data_sets/train/'
-    numbers = os.listdir(basepath)
-    for n in numbers:
-        for e in os.listdir(basepath + n):
-            i = read(basepath + n + '/' + e)
-            (s,t) = make_training_seq(i, network.INTERMEDIATE)
-            sequences.extend(s)
+    # sequences = []
+    # basepath = 'data_sets/train/'
+    # numbers = os.listdir(basepath)
+    # for n in numbers:
+    #     for e in os.listdir(basepath + n):
+    #         i = read(basepath + n + '/' + e)
+    #         (s,t) = make_training_seq(i, network.INTERMEDIATE)
+    #         sequences.extend(s)
 
-    print time.time() - t0, "seconds"
-    print len(sequences)
+    # print time.time() - t0, "seconds"
+    # print len(sequences)
