@@ -50,6 +50,7 @@ class SpatialPooler(object):
         
         ## set the current active coincidence
         uNodeState['k'] = k
+        print "node's new k is", k
 
         ## increment the seen vector
         try: uNodeState['seen'][k] += 1
@@ -82,6 +83,8 @@ class SpatialPooler(object):
         uNodeState['coincidences'] = coincidences
         uNodeState['seen'] = seen
         uNodeState['TAM'] = TAM
+        
+        return k
 
     def closest_coincidence(self, uCoincidences, uInputMsg): 
         """Compute the distance of each coincidence from a given input."""       
@@ -195,6 +198,8 @@ class OutputSpatialPooler(SpatialPooler):
         ## update the node's state
         uNodeState['coincidences'] = coincidences
         
+        return k
+        
         
     def update_PCW(self, uNodeState, uInputInfo):
         """Update the PCW matrix."""
@@ -202,7 +207,8 @@ class OutputSpatialPooler(SpatialPooler):
         k = uNodeState['k']
         cls = uInputInfo['class']
         
-        try: PCW[k, cls] += 1
+        try: 
+            PCW[k, cls] += 1
         except:
             (rows, cols) = PCW.shape
             (delta_r, delta_c) = (k + 1 - rows, cls + 1 - cols)

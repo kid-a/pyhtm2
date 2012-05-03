@@ -79,6 +79,8 @@ class IntermediateInferenceMaker(InferenceMaker):
 class OutputInferenceMaker(InferenceMaker):
     """Implements inference algorithms for output nodes."""
     def class_post_prob(self, uZ, uClassPriorProb):
+        print uZ
+        print uClassPriorProb
         total = np.dot(uZ, uClassPriorProb)
         return uZ * uClassPriorProb / total
     
@@ -88,11 +90,10 @@ class OutputInferenceMaker(InferenceMaker):
         cls_prior_prob = uNodeState['cls_prior_prob']
         PCW = uNodeState['PCW']
         
-        y = self.dens_over_coinc(coinc, input_msg, sigma)
+        y = self.dens_over_coinc(coinc, input_msg)
         y = utils.normalize_over_rows(y)
         z = self.dens_over_matrix(y, PCW)
         p = self.class_post_prob(z, cls_prior_prob)
-
         uNodeState['output_msg'] = p
 
 

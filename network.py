@@ -219,7 +219,21 @@ class Network(object):
 
             self.layers[i].finalize()
 
-    def inference(self): pass
+    def inference(self, uInput):
+        """After the network has learned, make inference on a new input."""
+        self.expose(uInput)
+        for m in range(len(self.layers) - 1):
+            self.layers[m].inference()
+            self.propagate(m, m + 1)
+
+        ## make inference on the output node
+        self.layers[-1].nodes[0][0].input_channel.put("inference")
+        self.layers[-1].nodes[0][0].output_channel.get()
+
+        ## read its output
+        self.layers[-1].nodes[0][0].input_channel.put("get_output")
+        msg = self.layers[-1].nodes[0][0].output_channel.get()
+        return msg
 
     def propagate(self, uFrom, uTo): 
         f = self.layers[uFrom]
@@ -286,6 +300,7 @@ class OutputNodeFinalizer(object):
         
         ## normalize the PCW matrix
         uNodeState['PCW'] = utils.normalize_over_cols(PCW)
+        uNodeState['cls_prior_prob'] = cls_prior_prob
 
 
 ## -----------------------------------------------------------------------------
@@ -454,8 +469,26 @@ if __name__ == "__main__":
     htm.layers[1].inference()
     htm.propagate(1, 2)
     htm.layers[2].train({'class' : 0})
+
+    image = usps.read("data_sets/train100/1/1.bmp")
+    htm.expose(image)
+    htm.layers[0].inference()
+    htm.propagate(0, 1)
+    htm.layers[1].inference()
+    htm.propagate(1, 2)
+    htm.layers[2].train({'class' : 1})
+
+    image = usps.read("data_sets/train100/2/1.bmp")
+    htm.expose(image)
+    htm.layers[0].inference()
+    htm.propagate(0, 1)
+    htm.layers[1].inference()
+    htm.propagate(1, 2)
+    htm.layers[2].train({'class' : 2})
     
     htm.layers[2].finalize()
+
+    print "Network output is: ", htm.inference(image)
     
 
     
