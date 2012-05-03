@@ -349,7 +349,7 @@ class Network(object):
                     f.nodes[i][j].input_channel.put("get_output")
                     msg = f.nodes[i][j].output_channel.get()
                     t.nodes[int(upper_i)][int(upper_j)].input_channel.put(("append_input", msg))
-                    t.nodes[int(upper_i)][int(upper_j)].input_channel.get()
+                    t.nodes[int(upper_i)][int(upper_j)].output_channel.get()
     
     def expose(self, uInput, uJustUpperLeftCorner=False):
         """Expose an input pattern to first layer's nodes."""
