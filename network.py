@@ -25,6 +25,93 @@ OUTPUT = 2
 
 
 ## -----------------------------------------------------------------------------
+## save function
+## -----------------------------------------------------------------------------
+def save(uNetwork, uPath):
+    """Saves a network on file, in the speficied path."""
+    ## save the network spec
+    out = open(uPath + "saved_net.py", "w")
+    out.write("spec = " + str(uNetwork.spec))
+    out.write("\n")
+    out.write("\n")
+
+    
+    ## for each layer, save the node's configuration
+    layers = uNetwork.layers
+
+    out.write("layers = [")
+    for l in range(len(layers) - 1):
+        out.write("[")
+        for i in range(len(layers[l].nodes)):
+            out.write("[")
+            for j in range(len(layers[l].nodes[i])):
+                layers[l].nodes[i][j].input_channel.put("clone_state")
+                state = layers[l].nodes[i][j].output_channel.get()
+        
+                out.write("{")
+                out.write("'coincidences' : " + str(state['coincidences'].tolist()) + ",")
+                out.write("'temporal_groups' : " + str(state['temporal_groups']) + ",")
+                out.write("'PCG' : " + str(state['PCG'].tolist()))
+                out.write("},")
+            out.write("],")
+        out.write("],")
+    
+    ## save the last node, as well
+    layers[-1].nodes[0][0].input_channel.put("clone_state")
+    state = layers[-1].nodes[0][0].output_channel.get()
+    out.write("[[")
+    out.write("{")
+    out.write("'coincidences' : " + str(state['coincidences'].tolist()) + ",")
+    out.write("'PCW' : " + str(state['PCW'].tolist()) + ",")
+    out.write("'cls_prior_prob' : " + str(state['cls_prior_prob'].tolist()))
+    out.write("}")
+    out.write("]]]")
+    out.close()
+
+
+## -----------------------------------------------------------------------------
+## load function
+## -----------------------------------------------------------------------------
+def load(uPath):
+    """Loads a network from file."""
+    import sys
+    sys.path.append(uPath)
+    import saved_net
+        
+    builder = NetworkBuilder(saved_net.spec)
+    htm = builder.build()
+    htm.start()
+    
+    ## restore each node state
+    layers = htm.layers
+    layers_spec = saved_net.layers
+    
+    for l in range(len(layers_spec)):
+        for i in range(len(layers_spec[l])):
+            for j in range(len(layers_spec[l][i])):
+                ## !FIXME lists must be converted to np.arrays
+
+                layers_spec[l][i][j]['coincidences'] = \
+                    np.array(layers_spec[l][i][j]['coincidences'])
+                
+                try: 
+                    layers_spec[l][i][j]['PCG'] = \
+                        np.array(layers_spec[l][i][j]['PCG'])
+                    
+                except:
+                    layers_spec[l][i][j]['cls_prior_prob'] = \
+                        np.array(layers_spec[l][i][j]['cls_prior_prob'])
+
+                    layers_spec[l][i][j]['PCW'] = \
+                        np.array(layers_spec[l][i][j]['PCW'])
+
+                layers[l].nodes[i][j].input_channel.put(("set_state", 
+                                                         layers_spec[l][i][j]))
+                
+    return htm
+
+
+## -----------------------------------------------------------------------------
 ## Node Class
 ## -----------------------------------------------------------------------------
 class Node(Process):
@@ -39,18 +126,12 @@ class Node(Process):
     def set_state(self, uState):
         """Set the state of a node. This operation makes sense only for all nodes
         except the output."""
-        self.state['coincidences'] = uState['coincidences']
-        self.state['temporal_groups'] = uState['temporal_groups']
-        self.state['PCG'] = uState['PCG']
+        self.strategy['state_handler'].set_state(self.state, uState)
 
     def clone_state(self):
         """Clone a node state. This operation makes sense only for all nodes
         except the output."""
-        s = {}
-        s['coincidences'] = self.state['coincidences']
-        s['temporal_groups'] = self.state['temporal_groups']
-        s['PCG'] = self.state['PCG']
-        return s
+        return self.strategy['state_handler'].clone(self.state)
         
     def run(self):
         while True:
@@ -82,7 +163,7 @@ class Node(Process):
                 #                 " input has been reset")
 
             elif msg[0] == "set_state":
-                # debug_print("Setting state on node " + str(self.state['name']))
+                debug_print("Setting state on node " + str(self.state['name']))
                 self.set_state(msg[1])
                                 
             elif msg[0] == "train":
@@ -193,6 +274,7 @@ class Layer(object):
 class Network(object):
     def __init__(self, *args, **kwargs):
         self.layers = []
+        self.spec = []
 
     def start(self):
         for layer in self.layers:
@@ -296,6 +378,9 @@ class Network(object):
             starting_point_h += patch_height
 
 
+## -----------------------------------------------------------------------------
+## OutputNodeFinalizer Class
+## -----------------------------------------------------------------------------
 class OutputNodeFinalizer(object):
     """Implements the algorithm for computing the PCW in the output node."""
     def finalize(self, uNodeState):
@@ -308,6 +393,45 @@ class OutputNodeFinalizer(object):
         ## normalize the PCW matrix
         uNodeState['PCW'] = utils.normalize_over_cols(PCW)
         uNodeState['cls_prior_prob'] = cls_prior_prob
+
+
+## -----------------------------------------------------------------------------
+## NodeStateHandler Class
+## -----------------------------------------------------------------------------
+class NodeStateHandler(object):
+    def clone(self, uNodeState):
+        """Clone a node's state. Despite of the method name it implements
+        a shallow copy."""
+        s = {}
+        s['coincidences'] = uNodeState['coincidences']
+        s['temporal_groups'] = uNodeState['temporal_groups']
+        s['PCG'] = uNodeState['PCG']
+        return s
+        
+    def set_state(self, uNodeState, uNewState):
+        """Set the internal state of a node."""
+        uNodeState['coincidences'] = uNewState['coincidences']
+        uNodeState['temporal_groups'] = uNewState['temporal_groups']
+        uNodeState['PCG'] = uNewState['PCG']
+        
+
+## -----------------------------------------------------------------------------
+## OutputNodeStateHandler Class
+## -----------------------------------------------------------------------------
+class OutputNodeStateHandler(NodeStateHandler):
+    def clone(self, uNodeState):
+        """Clone a node's state. Despite of the method name it implements
+        a shallow copy."""
+        s = {}
+        s['coincidences'] = uNodeState['coincidences']
+        s['cls_prior_prob'] = uNodeState['cls_prior_prob']
+        s['PCW'] = uNodeState['PCW']
+        return s
+
+    def set_state(self, uNodeState, uNewState):
+        uNodeState['coincidences'] = uNewState['coincidences']
+        uNodeState['cls_prior_prob'] = uNewState['cls_prior_prob']
+        uNodeState['PCW'] = uNewState['PCW']
 
 
 ## -----------------------------------------------------------------------------
@@ -356,16 +480,19 @@ class NodeFactory(object):
             strategy['trainer'] = EntrySpatialPooler()
             strategy['finalizer'] = TemporalPooler()
             strategy['inference_maker'] = EntryInferenceMaker()
+            strategy['state_handler'] = NodeStateHandler()
             
         elif uType == INTERMEDIATE:
             strategy['trainer'] = IntermediateSpatialPooler()
             strategy['finalizer'] = TemporalPooler()
             strategy['inference_maker'] = IntermediateInferenceMaker()
+            strategy['state_handler'] = NodeStateHandler()
 
         elif uType == OUTPUT:
             strategy['trainer'] = OutputSpatialPooler()
             strategy['finalizer'] = OutputNodeFinalizer()
             strategy['inference_maker'] = OutputInferenceMaker()
+            strategy['state_handler'] = OutputNodeStateHandler()
             
         ## the state is ready, make the node
         node = Node(state, strategy)
@@ -415,6 +542,7 @@ class NetworkBuilder(object):
             
         network = Network()
         network.layers = layers
+        network.spec = self.spec
         
         return network
 
