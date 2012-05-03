@@ -38,9 +38,12 @@ if __name__ == "__main__":
         print " * Entry layer:        ", len(sequences[network.ENTRY])
         print " * Intermediate layer: ", len(sequences[network.INTERMEDIATE])
         print " * Output layer:       ", len(sequences[network.OUTPUT])
-
+        
         print "Starting training..."
         htm.train(sequences)
+        
+        print "Saving network on file..."
+        save(htm, "usps/")
         
     elif choice == 2:
         t0 = time.time()
