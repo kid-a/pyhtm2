@@ -1,4 +1,8 @@
 ## global import ---------------------------------------------------------------
+import numpy as np
+import time
+import os
+
 
 ## local import ----------------------------------------------------------------
 from network import NetworkBuilder as NetworkBuilder
@@ -10,9 +14,10 @@ import network
 import usps
 import config
 import debug
-import time
+
 
 TRAINING_SET = "train100"
+TEST_SET = "data_sets/test"
 
 if __name__ == "__main__":
     print "*** HTM Training ***"
@@ -59,8 +64,25 @@ if __name__ == "__main__":
         print htm.inference(read("data_sets/test/0/1.bmp"))
         
     elif choice == 2:
+        classes = os.listdir(TEST_SET)
         
-        pass
+        total = 0
+        correct = 0
+        for c in classes:
+            current_class = int(c)
+
+            for i in os.listdir(TEST_SET + '/' + c):
+                total += 1
+
+                res = np.array(htm.inference(read(TEST_SET + '/' + c + '/' + i)))
+                res = np.argmax(res)
+
+                if res == current_class:
+                    correct += 1
+                
+        print "Total:", total
+        print "Correct:", correct
+        print "Correctness ratio:", correct/float(total)
 
     else:
         print "Abort"
