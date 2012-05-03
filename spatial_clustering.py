@@ -152,13 +152,16 @@ class EntrySpatialPooler(SpatialPooler):
     
     def closest_coincidence(self, uCoincidences, uInputMsg):
         """Compute the distance of each coincidence from a given input."""
-        distances = np.sum(np.abs(uCoincidences - \
-                                      uInputMsg) ** 2, axis=-1) ** (1./2)
+
+        distances = np.sqrt(np.sum(np.power(uCoincidences - uInputMsg, 2), axis=1))
+
+        # distances = np.sum(np.abs(uCoincidences - \
+        #                               uInputMsg) ** 2, axis=-1) ** (1./2)
             
         ## find the minimum
         k = np.argmin(distances)
         minimum = distances[k]
-        
+                
         return (k, minimum)
 
 
