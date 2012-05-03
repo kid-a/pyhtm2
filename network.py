@@ -196,6 +196,8 @@ class Node(Process):
                 # debug_print(str(self.state['name']) + \
                 #                 " new input: " + \
                 #                 str(self.state['input_msg']))
+                
+                self.output_channel.put("ok")
 
             else:
                 debug_print(str(self.state['name']) + \
@@ -336,6 +338,7 @@ class Network(object):
                     f.nodes[i][j].input_channel.put("get_output")
                     msg = f.nodes[i][j].output_channel.get()
                     t.nodes[0][0].input_channel.put(("append_input", msg))
+                    t.nodes[0][0].output_channel.get()
 
         else:
             for i in range(len(f.nodes)):
@@ -346,6 +349,7 @@ class Network(object):
                     f.nodes[i][j].input_channel.put("get_output")
                     msg = f.nodes[i][j].output_channel.get()
                     t.nodes[int(upper_i)][int(upper_j)].input_channel.put(("append_input", msg))
+                    t.nodes[int(upper_i)][int(upper_j)].input_channel.get()
     
     def expose(self, uInput, uJustUpperLeftCorner=False):
         """Expose an input pattern to first layer's nodes."""
