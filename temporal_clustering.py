@@ -132,7 +132,7 @@ class TemporalPooler(object):
         
         else:
             sorted_neighbours = sorted(neighbours, key=lambda x : x[1])
-            return map(lambda x : x[0], neighbours[:self.top_neighbours])
+            return map(lambda x : x[0], neighbours[:top_neighbours])
 
     def compute_PCG(self, uCoincidencePriors, uTemporalGroups):
         """Compute the PCG matrix."""
@@ -150,7 +150,7 @@ class TemporalPooler(object):
         groups and its PCG matrix."""
         TAM = uNodeState['TAM']
         seen = uNodeState['seen']
-
+        
         params = {}
         params['top_neighbours'] = uNodeState['top_neighbours']
         params['max_group_size'] = uNodeState['max_group_size']

@@ -65,8 +65,8 @@ class Node(Process):
             elif msg == "inference":
                 debug_print("Doing inference on node " + str(self.state['name']))
                 self.strategy['inference_maker'].inference(self.state)
-                debug_print("Node " + str(self.state['name']) + " output message: " +\
-                                str(self.state['output_msg']))
+                # debug_print("Node " + str(self.state['name']) + " output message: " +\
+                #                 str(self.state['output_msg']))
                 self.output_channel.put("ok")
 
             elif msg == "get_output":
@@ -78,39 +78,43 @@ class Node(Process):
 
             elif msg == "reset_input":
                 self.state['input_msg'] = []
-                debug_print(str(self.state['name']) + \
-                                " input has been reset")
+                # debug_print(str(self.state['name']) + \
+                #                 " input has been reset")
 
             elif msg[0] == "set_state":
-                debug_print("Setting state on node " + str(self.state['name']))
+                # debug_print("Setting state on node " + str(self.state['name']))
                 self.set_state(msg[1])
                                 
             elif msg[0] == "train":
-                debug_print("Training node " + str(self.state['name']))
+                # debug_print("Training node " + str(self.state['name']))
 
                 self.strategy['trainer'].train(self.state, msg[1])
+                
+                debug_print("Node " + str(self.state['name']) + " coincidences: " + \
+                                str(self.state['coincidences'].shape))
+                                       
 
-                debug_print("Node " + str(self.state['name']) + \
-                                " new coincidences:" + \
-                                str(self.state['coincidences']))
+                # debug_print("Node " + str(self.state['name']) + \
+                #                 " new coincidences:" + \
+                #                 str(self.state['coincidences']))
 
                 self.output_channel.put("ok")
             
             elif msg[0] == "set_input":
                 self.state['input_msg'] = msg[1]
 
-                debug_print(str(self.state['name']) + \
-                                " new input: " + \
-                                str(self.state['input_msg']))
+                # debug_print(str(self.state['name']) + \
+                #                 " new input: " + \
+                #                 str(self.state['input_msg']))
 
                 self.output_channel.put("ok")
 
             elif msg[0] == "append_input":
                 self.state['input_msg'].append(msg[1])
 
-                debug_print(str(self.state['name']) + \
-                                " new input: " + \
-                                str(self.state['input_msg']))
+                # debug_print(str(self.state['name']) + \
+                #                 " new input: " + \
+                #                 str(self.state['input_msg']))
 
             else:
                 debug_print(str(self.state['name']) + \
@@ -198,7 +202,7 @@ class Network(object):
 
     def train(self, uTrainingSequences):
         """Train the network on the given training sequences."""
-        layers_type = [INTERMEDIATE for s in self.spec]
+        layers_type = [INTERMEDIATE for s in self.layers]
         layers_type[0] = ENTRY
         layers_type[-1] = OUTPUT
         
@@ -209,7 +213,8 @@ class Network(object):
             for pattern in uTrainingSequences[layers_type[i]]:
                 (input_raw, input_info) = pattern
 
-                self.expose(input_raw)
+                if i == ENTRY: self.expose(input_raw, uJustUpperLeftCorner=True)
+                else: self.expose(input_raw)
                     
                 for m in range(i):
                     self.layers[m].inference()
@@ -260,7 +265,7 @@ class Network(object):
                     msg = f.nodes[i][j].output_channel.get()
                     t.nodes[int(upper_i)][int(upper_j)].input_channel.put(("append_input", msg))
     
-    def expose(self, uInput):
+    def expose(self, uInput, uJustUpperLeftCorner=False):
         """Expose an input pattern to first layer's nodes."""
         (input_height, input_width) = uInput.shape
         (layer_height, layer_width) = (len(self.layers[0].nodes), 
@@ -282,6 +287,8 @@ class Network(object):
     
                 node.input_channel.put(("set_input", patch))
                 node.output_channel.get()
+                
+                if uJustUpperLeftCorner: return
 
                 starting_point_w += patch_width
                 

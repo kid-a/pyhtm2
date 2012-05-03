@@ -50,7 +50,6 @@ class SpatialPooler(object):
         
         ## set the current active coincidence
         uNodeState['k'] = k
-        print "node's new k is", k
 
         ## increment the seen vector
         try: uNodeState['seen'][k] += 1
@@ -71,7 +70,7 @@ class SpatialPooler(object):
             TAM = uNodeState['TAM']
             seen = uNodeState['seen']
 
-            coincidences = np.vstack((coincidences, w))
+            coincidences = np.vstack((coincidences, compute_widx(input_msg)))
             (k, _) = coincidences.shape
             k -= 1
             seen = np.hstack((seen, 0))
@@ -191,7 +190,7 @@ class OutputSpatialPooler(SpatialPooler):
             
         else:
             coincidences = uNodeState['coincidences']
-            coincidences = np.vstack((coincidences, w))
+            coincidences = np.vstack((coincidences, compute_widx(input_msg)))
             (k, _) = coincidences.shape
             k -= 1
             

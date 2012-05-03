@@ -1,9 +1,13 @@
 ## global import ---------------------------------------------------------------
+from multiprocessing import Pool
 from PIL import Image
 import numpy as np
+import os
 
 ## local import ----------------------------------------------------------------
 import network
+
+BASEPATH = "data_sets"
 
 WHITE = 255
 BLACK = 0
@@ -219,7 +223,48 @@ def make_training_seq(uImage, uLayer, uWindowSize=(4,4), uClass=None):
         return sequence
 
 
+def make_sequence(uClasses, uPath, uType):
+    sequence = []
+
+    for c in uClasses:
+        for i in os.listdir(uPath + '/' + c):
+            image = read(uPath + '/' + c + '/' + i)
+            sequence.extend(make_training_seq(image, uType, uClass=int(c)))
+        
+    return sequence
+
+
+def get_training_sequences(uDir):
+    pool = Pool(3)
+    path = BASEPATH + '/' + uDir
+    
+    sequences = {network.ENTRY : [],
+                 network.INTERMEDIATE : [],
+                 network.OUTPUT : []}
+    
+    numbers = os.listdir(path)
+
+    result_entry = pool.apply_async(make_sequence,
+                                    [numbers, path, network.ENTRY])
+    result_intermediate = pool.apply_async(make_sequence,
+                                           [numbers, path, network.INTERMEDIATE])
+    result_output = pool.apply_async(make_sequence,
+                                     [numbers, path, network.OUTPUT])
+    
+    while not result_entry and \
+            not result_intermediate and \
+            not result_output:
+        pass
+    
+    sequences[network.ENTRY] = result_entry.get()
+    sequences[network.INTERMEDIATE] = result_intermediate.get()
+    sequences[network.OUTPUT] = result_output.get()
+    
+    return sequences
+
+
 if __name__ == "__main__":
+    pass
     #i = read("data_sets/train/5/41.bmp")
     #print len(make_training_seq(i, network.ENTRY))
     # print make_training_seq(i, network.INTERMEDIATE)
@@ -258,3 +303,4 @@ if __name__ == "__main__":
 
     # print time.time() - t0, "seconds"
     # print len(sequences)
+    

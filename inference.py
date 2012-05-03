@@ -79,8 +79,6 @@ class IntermediateInferenceMaker(InferenceMaker):
 class OutputInferenceMaker(InferenceMaker):
     """Implements inference algorithms for output nodes."""
     def class_post_prob(self, uZ, uClassPriorProb):
-        print uZ
-        print uClassPriorProb
         total = np.dot(uZ, uClassPriorProb)
         return uZ * uClassPriorProb / total
     
