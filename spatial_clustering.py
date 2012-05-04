@@ -1,9 +1,12 @@
 ## global import ---------------------------------------------------------------
 import numpy as np
+import sys
 
 
 ## local import ----------------------------------------------------------------
+from debug import debug_print
 import utils
+
 
 
 ## -----------------------------------------------------------------------------
@@ -32,6 +35,7 @@ class SpatialPooler(object):
         ## select the active coincidence
         self.select_active_coinc(uNodeState)
         self.update_TAM(uNodeState, uInputInfo)
+        debug_print(str(uNodeState))
                 
     def select_active_coinc(self, uNodeState):
         """Selects the active coincidence."""

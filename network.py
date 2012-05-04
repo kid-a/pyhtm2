@@ -315,11 +315,6 @@ class Network(object):
         self.expose(uInput)
         for m in range(len(self.layers) - 1):
             self.layers[m].inference()
-            
-            self.layers[m].nodes[0][0].input_channel.put("get_output")
-            print self.layers[m].nodes[0][0].output_channel.get()
-            return
-
             self.propagate(m, m + 1)
 
         ## make inference on the output node
