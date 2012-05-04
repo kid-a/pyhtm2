@@ -159,7 +159,7 @@ class TemporalPooler(object):
         norm_TAM = utils.make_symmetric(TAM)
         
         ## normalize the TAM
-        norm_TAM = utils.normalize_over_rows(norm_TAM)
+        norm_TAM = np.nan_to_num(utils.normalize_over_rows(norm_TAM))
         
         ## compute coincidence priors
         coincidence_priors = seen / float(seen.sum())
