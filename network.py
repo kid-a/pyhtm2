@@ -392,8 +392,10 @@ class OutputNodeFinalizer(object):
     """Implements the algorithm for computing the PCW in the output node."""
     def finalize(self, uNodeState):
         PCW = uNodeState['PCW']
+        print PCW
 
         s = PCW.sum(axis=0)
+        print s
         total = PCW.sum()
         cls_prior_prob = s / float(total)
         
