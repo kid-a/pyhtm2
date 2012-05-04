@@ -38,10 +38,10 @@ if __name__ == "__main__":
         if choice == 1: sequences = usps.get_training_sequences("train100")
         else: sequences = usps.get_training_sequences("train", 100)
 
-        print "Number of training sequences generated:"
-        print " * Entry layer:        ", len(sequences[network.ENTRY])
-        print " * Intermediate layer: ", len(sequences[network.INTERMEDIATE])
-        print " * Output layer:       ", len(sequences[network.OUTPUT])
+        # print "Number of training sequences generated:"
+        # print " * Entry layer:        ", len(sequences[network.ENTRY])
+        # print " * Intermediate layer: ", len(sequences[network.INTERMEDIATE])
+        # print " * Output layer:       ", len(sequences[network.OUTPUT])
         
         print "Starting training..."
         htm.train(sequences)
