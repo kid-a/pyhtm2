@@ -25,18 +25,20 @@ if __name__ == "__main__":
     htm.start()
     
     
-    for i in range(10):        
-        print i
-        image = usps.read("data_sets/train100/0/" + str(i+1) + ".bmp")
-        htm.expose(image)
-        htm.layers[0].train({'temporal_gap' : False})
+    for j in range(4):
+        for i in range(10):
+            print i
+            image = usps.read("data_sets/train100/" + str(j) + "/" + str(i+1) + ".bmp")
+            htm.expose(image)
+            if i == 0: htm.layers[0].train({'temporal_gap' : True})
+            else: htm.layers[0].train({'temporal_gap' : False})
     
     htm.layers[0].finalize()
 
     htm.layers[0].nodes[0][0].input_channel.put("clone_state")
     print htm.layers[0].nodes[0][0].output_channel.get()
 
-    for i in range(2):        
+    for i in range(5):        
         print i
         image = usps.read("data_sets/train100/0/" + str(i+1) + ".bmp")
         htm.expose(image)
