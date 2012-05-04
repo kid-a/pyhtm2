@@ -183,7 +183,7 @@ class Node(Process):
             
             elif msg[0] == "set_input":
                 self.state['input_msg'] = msg[1]
-                print "input is", self.state['input_msg']
+                #print "input is", self.state['input_msg']
 
                 # debug_print(str(self.state['name']) + \
                 #                 " new input: " + \
@@ -193,7 +193,7 @@ class Node(Process):
 
             elif msg[0] == "append_input":
                 self.state['input_msg'].append(msg[1])
-                print "Node's new input", self.state['input_msg']
+                #print "Node's new input", self.state['input_msg']
 
                 # debug_print(str(self.state['name']) + \
                 #                 " new input: " + \
@@ -392,10 +392,8 @@ class OutputNodeFinalizer(object):
     """Implements the algorithm for computing the PCW in the output node."""
     def finalize(self, uNodeState):
         PCW = uNodeState['PCW']
-        print PCW
 
         s = PCW.sum(axis=0)
-        print s
         total = PCW.sum()
         cls_prior_prob = s / float(total)
         
