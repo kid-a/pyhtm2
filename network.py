@@ -263,7 +263,7 @@ class Layer(object):
         for i in range(len(self.nodes)):
             for j in range(len(self.nodes[i])):
                 self.nodes[i][j].input_channel.put("inference")
-
+                
         ## wait for the finalization to be completed
         for i in range(len(self.nodes)):
             for j in range(len(self.nodes[i])):
