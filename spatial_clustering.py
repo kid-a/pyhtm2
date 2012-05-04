@@ -107,7 +107,7 @@ class SpatialPooler(object):
         if not uInputInfo['temporal_gap']:
             for t in range(len(k_prev)):
                 TAM[k_prev[t], k] = TAM[k_prev[t], k] + transition_memory - t
-
+                
         ## last, add k to the k_prev list
         k_prev.insert(0, k)
         if len(k_prev) > transition_memory:

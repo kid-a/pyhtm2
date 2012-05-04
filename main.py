@@ -20,6 +20,7 @@ TRAINING_SET = "data_sets/train100"
 TEST_SET = "data_sets/test"
 
 if __name__ == "__main__":
+    np.set_printoptions(threshold='nan')
     print "*** HTM Training ***"
     print "1. Train HTM on Train100 training set"
     print "2. Train HTM on Train1000 training set"
@@ -36,6 +37,7 @@ if __name__ == "__main__":
         print "*** Training htm ***"
         if choice == 1: sequences = usps.get_training_sequences("train100")
         else: sequences = usps.get_training_sequences("train", 100)
+
         print "Number of training sequences generated:"
         print " * Entry layer:        ", len(sequences[network.ENTRY])
         print " * Intermediate layer: ", len(sequences[network.INTERMEDIATE])
@@ -102,10 +104,16 @@ if __name__ == "__main__":
                 total += 1
 
                 res = np.array(htm.inference(read(TRAINING_SET + '/' + c + '/' + i)))
-                res = np.argmax(res)
+                m = np.argmax(res)
 
-                if res == current_class:
+                if m == current_class:
                     correct += 1
+                else:
+                    print "Class is ", current_class
+                    print "Inference returned ", res
+                    print "Whose max is ", m
+                    print
+                    raw_input()
                 
         print "Total:", total
         print "Correct:", correct

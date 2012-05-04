@@ -250,6 +250,7 @@ def get_training_sequences(uDir, uSeqPerClass=0):
     
     numbers = os.listdir(path)
     numbers.sort()
+    numbers.reverse()
 
     result_entry = pool.apply_async(make_sequence,
                                     [numbers, path, 

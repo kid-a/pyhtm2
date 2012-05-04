@@ -39,7 +39,7 @@ class InferenceMaker(object):
 class EntryInferenceMaker(InferenceMaker):
     """Implements inference algorithms for entry layer nodes."""
     def dens_over_coinc(self, uCoincidences, uCurrentInput, uSigma=1):        
-        y = np.sum(np.abs(uCoincidences - uCurrentInput)**2,axis=-1)**(1./2)
+        y = np.sqrt(np.sum(np.power(uCoincidences - uCurrentInput, 2), axis=1))  
         y = np.exp(- np.power(y, 2) / np.power(uSigma, 2))
         return y
 
