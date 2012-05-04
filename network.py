@@ -183,6 +183,7 @@ class Node(Process):
             
             elif msg[0] == "set_input":
                 self.state['input_msg'] = msg[1]
+                print "input is", self.state['input_msg']
 
                 # debug_print(str(self.state['name']) + \
                 #                 " new input: " + \
@@ -192,6 +193,7 @@ class Node(Process):
 
             elif msg[0] == "append_input":
                 self.state['input_msg'].append(msg[1])
+                print "Node's new input", self.state['input_msg']
 
                 # debug_print(str(self.state['name']) + \
                 #                 " new input: " + \
@@ -345,6 +347,7 @@ class Network(object):
                 upper_i = math.floor(i / float(len(t.nodes)))
             
                 for j in range(len(f.nodes[i])):
+                    
                     upper_j = math.floor(j / float(len(t.nodes[0])))
                     f.nodes[i][j].input_channel.put("get_output")
                     msg = f.nodes[i][j].output_channel.get()
