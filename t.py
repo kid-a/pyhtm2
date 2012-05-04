@@ -25,7 +25,7 @@ if __name__ == "__main__":
     htm.start()
     
     ## train layer 0
-    for j in range(4):
+    for j in range(5):
         for i in range(10):
             image = usps.read("data_sets/train100/" + str(j) + "/" + str(i+1) + ".bmp")
             htm.expose(image)
@@ -35,7 +35,7 @@ if __name__ == "__main__":
     htm.layers[0].finalize()
 
     ## train layer 1
-    for j in range(4):
+    for j in range(5):
         for i in range(10):
             print i
             image = usps.read("data_sets/train100/" + str(j) + "/" + str(i+1) + ".bmp")
