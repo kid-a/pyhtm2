@@ -16,7 +16,7 @@ import config
 import debug
 
 
-TRAINING_SET = "train100"
+TRAINING_SET = "data_sets/train100"
 TEST_SET = "data_sets/test"
 
 if __name__ == "__main__":
@@ -57,7 +57,8 @@ if __name__ == "__main__":
 
     print "*** HTM Testing ***"
     print "1. Test HTM on single input"
-    print "2. Load HTM on entire test set"
+    print "2. Test HTM on entire test set"
+    print "3. Test HTM on Train100"
 
     choice = int(raw_input())
     
@@ -78,6 +79,27 @@ if __name__ == "__main__":
                 total += 1
 
                 res = np.array(htm.inference(read(TEST_SET + '/' + c + '/' + i)))
+                res = np.argmax(res)
+
+                if res == current_class:
+                    correct += 1
+                
+        print "Total:", total
+        print "Correct:", correct
+        print "Correctness ratio:", correct/float(total)
+
+    elif choice == 3:
+        classes = os.listdir(TRAINING_SET)
+        
+        total = 0
+        correct = 0
+        for c in classes:
+            current_class = int(c)
+
+            for i in os.listdir(TRAINING_SET + '/' + c):
+                total += 1
+
+                res = np.array(htm.inference(read(TRAINING_SET + '/' + c + '/' + i)))
                 res = np.argmax(res)
 
                 if res == current_class:
