@@ -240,40 +240,68 @@ def make_sequence(uClasses, uPath, uType, uSeqPerClass=0):
     return sequence
 
 
-def get_training_sequences(uDir, uSeqPerClass=0):
-    pool = Pool(3)
+def seq_generator(uClasses, uPath, uType, uSeqPerClass=0):
+    for c in uClasses:
+        paths = os.listdir(uPath + '/' + c)
+        paths.sort()
+        
+        if uSeqPerClass != 0:
+            paths = paths[0:uSeqPerClass]
+        
+        for i in paths:
+            image = read(uPath + '/' + c + '/' + i)
+            sequence = make_training_seq(image, uType, uClass=int(c))
+            for s in sequence:
+                yield s
+
+
+def get_training_sequences(uDir, uSeqPerClass=0, make_generators=True):
     path = BASEPATH + '/' + uDir
-    
+
     sequences = {network.ENTRY : [],
                  network.INTERMEDIATE : [],
                  network.OUTPUT : []}
-    
+
     numbers = os.listdir(path)
     numbers.sort()
     numbers.reverse()
 
-    result_entry = pool.apply_async(make_sequence,
-                                    [numbers, path, 
-                                     network.ENTRY, uSeqPerClass])
+    if make_generators:
+        sequences[network.ENTRY] = seq_generator(numbers, path, 
+                                                 network.ENTRY, uSeqPerClass)
+        
+        sequences[network.INTERMEDIATE] = seq_generator(numbers, path, 
+                                                        network.INTERMEDIATE, uSeqPerClass)
 
-    result_intermediate = pool.apply_async(make_sequence,
-                                           [numbers, path, 
-                                            network.INTERMEDIATE, uSeqPerClass])
+        sequences[network.OUTPUT] = seq_generator(numbers, path, 
+                                                  network.OUTPUT, uSeqPerClass)
+        return sequences
+        
+    else:
 
-    result_output = pool.apply_async(make_sequence,
-                                     [numbers, path, 
-                                      network.OUTPUT, uSeqPerClass])
+        pool = Pool(3)
+        result_entry = pool.apply_async(make_sequence,
+                                        [numbers, path, 
+                                         network.ENTRY, uSeqPerClass])
+
+        result_intermediate = pool.apply_async(make_sequence,
+                                               [numbers, path, 
+                                                network.INTERMEDIATE, uSeqPerClass])
+        
+        result_output = pool.apply_async(make_sequence,
+                                         [numbers, path, 
+                                          network.OUTPUT, uSeqPerClass])
     
-    while not result_entry and \
-            not result_intermediate and \
-            not result_output:
-        pass
+        while not result_entry and \
+                not result_intermediate and \
+                not result_output:
+            pass
     
-    sequences[network.ENTRY] = result_entry.get()
-    sequences[network.INTERMEDIATE] = result_intermediate.get()
-    sequences[network.OUTPUT] = result_output.get()
-    
-    return sequences
+        sequences[network.ENTRY] = result_entry.get()
+        sequences[network.INTERMEDIATE] = result_intermediate.get()
+        sequences[network.OUTPUT] = result_output.get()
+            
+        return sequences
 
 
 if __name__ == "__main__":
