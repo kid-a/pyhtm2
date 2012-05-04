@@ -243,6 +243,7 @@ def get_training_sequences(uDir):
                  network.OUTPUT : []}
     
     numbers = os.listdir(path)
+    numbers.sort()
 
     result_entry = pool.apply_async(make_sequence,
                                     [numbers, path, network.ENTRY])
