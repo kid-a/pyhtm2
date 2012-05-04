@@ -223,12 +223,15 @@ def make_training_seq(uImage, uLayer, uWindowSize=(4,4), uClass=None):
         return sequence
 
 
-def make_sequence(uClasses, uPath, uType):
+def make_sequence(uClasses, uPath, uType, uSeqPerClass=0):
     sequence = []
 
     for c in uClasses:
         paths = os.listdir(uPath + '/' + c)
         paths.sort()
+        
+        if uSeqPerClass != 0:
+            paths = paths[0:uSeqPerClass]
         
         for i in paths:
             image = read(uPath + '/' + c + '/' + i)
@@ -237,7 +240,7 @@ def make_sequence(uClasses, uPath, uType):
     return sequence
 
 
-def get_training_sequences(uDir):
+def get_training_sequences(uDir, uSeqPerClass=0):
     pool = Pool(3)
     path = BASEPATH + '/' + uDir
     
@@ -249,11 +252,16 @@ def get_training_sequences(uDir):
     numbers.sort()
 
     result_entry = pool.apply_async(make_sequence,
-                                    [numbers, path, network.ENTRY])
+                                    [numbers, path, 
+                                     network.ENTRY, uSeqPerClass])
+
     result_intermediate = pool.apply_async(make_sequence,
-                                           [numbers, path, network.INTERMEDIATE])
+                                           [numbers, path, 
+                                            network.INTERMEDIATE, uSeqPerClass])
+
     result_output = pool.apply_async(make_sequence,
-                                     [numbers, path, network.OUTPUT])
+                                     [numbers, path, 
+                                      network.OUTPUT, uSeqPerClass])
     
     while not result_entry and \
             not result_intermediate and \

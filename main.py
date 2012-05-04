@@ -22,18 +22,20 @@ TEST_SET = "data_sets/test"
 if __name__ == "__main__":
     print "*** HTM Training ***"
     print "1. Train HTM on Train100 training set"
-    print "2. Load HTM from file"
+    print "2. Train HTM on Train1000 training set"
+    print "3. Load HTM from file"
     choice = int(raw_input())
     
-    if choice == 1:
+    if choice == 1 or choice == 2:
         builder = NetworkBuilder(config.usps_net)
         htm = builder.build()
     
         htm.start()
         t0 = time.time()
     
-        print "*** Training htm on", TRAINING_SET, "***"
-        sequences = usps.get_training_sequences("train100")
+        print "*** Training htm ***"
+        if choice == 1: sequences = usps.get_training_sequences("train100")
+        else: sequences = usps.get_training_sequences("train", 100)
         print "Number of training sequences generated:"
         print " * Entry layer:        ", len(sequences[network.ENTRY])
         print " * Intermediate layer: ", len(sequences[network.INTERMEDIATE])
@@ -45,7 +47,7 @@ if __name__ == "__main__":
         print "Saving network on file..."
         save(htm, "usps/")
         
-    elif choice == 2:
+    elif choice == 3:
         t0 = time.time()
         htm = load("usps/") 
         
