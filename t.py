@@ -48,8 +48,8 @@ if __name__ == "__main__":
     htm.layers[1].finalize()
 
     ## train layer 3
-    for j in range(5):
-        for i in range(10):
+    for j in range(3):
+        for i in range(5):
             print i
             image = usps.read("data_sets/train100/" + str(j) + "/" + str(i+1) + ".bmp")
             htm.expose(image)

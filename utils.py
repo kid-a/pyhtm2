@@ -36,6 +36,15 @@ def make_symmetric(array):
         np.tril( np.tril(array, -1) + np.transpose(np.triu(array, 1)), -1) + \
         np.triu( np.transpose(np.tril(array, -1)) + np.triu(array, 1),  1) + \
         (array * np.eye(size))
+
+def resize(array, new_dims):
+    """Resize an array, guaranteeing that elements stays in the same position."""
+    (rows, cols) = array.shape
+    new_array = np.zeros(new_dims)
+    new_array[0:rows, 0:cols] = array
+    return new_array
+    
+    
     
 
 

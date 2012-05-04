@@ -208,6 +208,8 @@ class OutputSpatialPooler(SpatialPooler):
         PCW = uNodeState['PCW']
         k = uNodeState['k']
         cls = uInputInfo['class']
+
+        print "cls is", cls
         
         try: 
             PCW[k, cls] += 1
@@ -217,7 +219,7 @@ class OutputSpatialPooler(SpatialPooler):
             if delta_r < 0: delta_r = 0
             if delta_c < 0: delta_c = 0
             
-            PCW.resize((rows + delta_r, cols + delta_c), refcheck=False)
+            PCW = utils.resize(PCW, (rows + delta_r, cols + delta_c))
             PCW[k, cls] = 1
             
         uNodeState['PCW'] = PCW
