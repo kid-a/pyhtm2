@@ -46,6 +46,8 @@ if __name__ == "__main__":
             if i == 0: htm.layers[1].train({'temporal_gap' : True})
             else: htm.layers[1].train({'temporal_gap' : False})
 
+    htm.layers[1].finalize()
+
     for i in range(2):
         for j in range(2):
             htm.layers[1].nodes[i][j].input_channel.put("clone_state")
@@ -61,7 +63,7 @@ if __name__ == "__main__":
     #     print "out, first layer: ", htm.layers[0].nodes[0][0].output_channel.get()
     #     htm.propagate(0, 1)
 
-
+p
         
         
         
