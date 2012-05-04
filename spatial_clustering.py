@@ -4,7 +4,6 @@ import sys
 
 
 ## local import ----------------------------------------------------------------
-from debug import debug_print
 import utils
 
 
@@ -35,7 +34,6 @@ class SpatialPooler(object):
         ## select the active coincidence
         self.select_active_coinc(uNodeState)
         self.update_TAM(uNodeState, uInputInfo)
-        #debug_print(str(uNodeState))
                 
     def select_active_coinc(self, uNodeState):
         """Selects the active coincidence."""
@@ -55,7 +53,6 @@ class SpatialPooler(object):
         ## set the current active coincidence
         uNodeState['k'] = k
 
-        debug_print(k)
         ## increment the seen vector
         try: uNodeState['seen'][k] += 1
         except: pass
@@ -166,11 +163,7 @@ class EntrySpatialPooler(SpatialPooler):
         ## find the minimum
         k = np.argmin(distances)
         minimum = distances[k]
-                
-        # debug_print("Input: " + str(uInputMsg))
-        # debug_print("Coinc: " + str(uCoincidences))
-        # debug_print(distances)
-        # debug_print(minimum)
+        
         return (k, minimum)
 
 
@@ -217,8 +210,6 @@ class OutputSpatialPooler(SpatialPooler):
         PCW = uNodeState['PCW']
         k = uNodeState['k']
         cls = uInputInfo['class']
-
-        print "cls is", cls
         
         try: 
             PCW[k, cls] += 1
