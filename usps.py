@@ -227,7 +227,10 @@ def make_sequence(uClasses, uPath, uType):
     sequence = []
 
     for c in uClasses:
-        for i in os.listdir(uPath + '/' + c):
+        paths = os.listdir(uPath + '/' + c)
+        paths.sort()
+        
+        for i in paths:
             image = read(uPath + '/' + c + '/' + i)
             sequence.extend(make_training_seq(image, uType, uClass=int(c)))
         
