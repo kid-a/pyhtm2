@@ -54,18 +54,14 @@ if __name__ == "__main__":
             print i, j, htm.layers[1].nodes[i][j].output_channel.get()
             
 
-    # for i in range(1):        
-    #     print i
-    #     image = usps.read("data_sets/train100/0/" + str(i+1) + ".bmp")
-    #     htm.expose(image)
-    #     htm.layers[0].inference()
-    #     htm.layers[0].nodes[0][0].input_channel.put("get_output")
-    #     print "out, first layer: ", htm.layers[0].nodes[0][0].output_channel.get()
-    #     htm.propagate(0, 1)
-
-p
-        
-        
-        
-    
-
+    for i in range(1):        
+        print i
+        image = usps.read("data_sets/train100/0/" + str(i+1) + ".bmp")
+        htm.expose(image)
+        htm.layers[0].inference()
+        # htm.layers[0].nodes[0][0].input_channel.put("get_output")
+        # print "out, first layer: ", htm.layers[0].nodes[0][0].output_channel.get()
+        htm.propagate(0, 1)
+        htm.layers[0].inference()
+        htm.layers[1].nodes[0][0].input_channel.put("get_output")
+        print "out, second layer: ", htm.layers[1].nodes[0][0].output_channel.get()
