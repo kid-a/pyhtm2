@@ -167,10 +167,10 @@ class EntrySpatialPooler(SpatialPooler):
         k = np.argmin(distances)
         minimum = distances[k]
                 
-        debug_print("Input: " + str(uInputMsg))
-        debug_print("Coinc: " + str(uCoincidences))
-        debug_print(distances)
-        debug_print(minimum)
+        # debug_print("Input: " + str(uInputMsg))
+        # debug_print("Coinc: " + str(uCoincidences))
+        # debug_print(distances)
+        # debug_print(minimum)
         return (k, minimum)
 
 
