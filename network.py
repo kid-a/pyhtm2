@@ -41,20 +41,36 @@ def save(uNetwork, uPath):
 
     out.write("layers = [")
     for l in range(len(layers) - 1):
-        out.write("[")
-        for i in range(len(layers[l].nodes)):
-            out.write("[")
-            for j in range(len(layers[l].nodes[i])):
-                layers[l].nodes[i][j].input_channel.put("clone_state")
-                state = layers[l].nodes[i][j].output_channel.get()
         
-                out.write("{")
-                out.write("'coincidences' : " + str(state['coincidences'].tolist()) + ",")
-                out.write("'temporal_groups' : " + str(state['temporal_groups']) + ",")
-                out.write("'PCG' : " + str(state['PCG'].tolist()))
-                out.write("},")
+        if layers[l].node_sharing:
+            ## save just the first node
+            out.write("[[")
+            layers[l].nodes[0][0].input_channel.put("clone_state")
+            state = layers[l].nodes[0][0].output_channel.get()
+            
+            out.write("{")
+            out.write("'coincidences' : " + str(state['coincidences'].tolist()) + ",")
+            out.write("'temporal_groups' : " + str(state['temporal_groups']) + ",")
+            out.write("'PCG' : " + str(state['PCG'].tolist()))
+            out.write("},")
+            out.write("]],")
+            
+        else:
+            ## save all nodes
+            out.write("[")
+            for i in range(len(layers[l].nodes)):
+                out.write("[")
+                for j in range(len(layers[l].nodes[i])):
+                    layers[l].nodes[i][j].input_channel.put("clone_state")
+                    state = layers[l].nodes[i][j].output_channel.get()
+        
+                    out.write("{")
+                    out.write("'coincidences' : " + str(state['coincidences'].tolist()) + ",")
+                    out.write("'temporal_groups' : " + str(state['temporal_groups']) + ",")
+                    out.write("'PCG' : " + str(state['PCG'].tolist()))
+                    out.write("},")
+                out.write("],")
             out.write("],")
-        out.write("],")
     
     ## save the last node, as well
     layers[-1].nodes[0][0].input_channel.put("clone_state")
@@ -84,30 +100,55 @@ def load(uPath):
     
     ## restore each node state
     layers = htm.layers
-    layers_spec = saved_net.layers
+    layers_spec = saved_net.spec
+    layers_data = saved_net.layers
     
-    for l in range(len(layers_spec)):
-        for i in range(len(layers_spec[l])):
-            for j in range(len(layers_spec[l][i])):
-                ## !FIXME lists must be converted to np.arrays
+    for l in range(len(layers) - 1):
+        (r,c) = layers_spec[l]['shape']
 
-                layers_spec[l][i][j]['coincidences'] = \
-                    np.array(layers_spec[l][i][j]['coincidences'])
+        if layers_spec[l]['node_sharing']:
+
+            layers_data[l][0][0]['coincidences'] = \
+                np.array(layers_data[l][0][0]['coincidences'])
+            
+            ## !FIXME temporal groups here
+
+            layers_data[l][0][0]['PCG'] = \
+                np.array(layers_data[l][0][0]['PCG'])
+
+            for i in range(r):
+                for j in range(c):
+                    layers[l].nodes[i][j].input_channel.put(("set_state", 
+                                                             layers_data[l][0][0]))
+
+    else:
+        for i in range(r):
+            for j in range(c):
+
+                layers_data[l][i][j]['coincidences'] = \
+                    np.array(layers_data[l][i][j]['coincidences'])
                 
-                try: 
-                    layers_spec[l][i][j]['PCG'] = \
-                        np.array(layers_spec[l][i][j]['PCG'])
-                    
-                except:
-                    layers_spec[l][i][j]['cls_prior_prob'] = \
-                        np.array(layers_spec[l][i][j]['cls_prior_prob'])
+                ## !FIXME temporal groups here
 
-                    layers_spec[l][i][j]['PCW'] = \
-                        np.array(layers_spec[l][i][j]['PCW'])
+                layers_data[l][i][j]['PCG'] = \
+                    np.array(layers_data[l][i][j]['PCG'])
 
                 layers[l].nodes[i][j].input_channel.put(("set_state", 
-                                                         layers_spec[l][i][j]))
-                
+                                                         layers_data[l][i][j]))
+    
+    ## restore the state of the output node
+    layers_data[-1][0][0]['coincidences'] = \
+        np.array(layers_data[-1][0][0]['coincidences'])
+    
+    layers_data[-1][0][0]['cls_prior_prob'] = \
+        np.array(layers_data[-1][0][0]['cls_prior_prob'])
+
+    layers_data[-1][0][0]['PCW'] = \
+        np.array(layers_data[-1][0][0]['PCW'])
+
+    layers[-1].nodes[0][0].input_channel.put(("set_state", 
+                                             layers_data[-1][0][0]))
+
     return htm
 
 

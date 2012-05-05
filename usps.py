@@ -244,6 +244,7 @@ def seq_generator(uClasses, uPath, uType, uSeqPerClass=0):
     for c in uClasses:
         paths = os.listdir(uPath + '/' + c)
         paths.sort()
+        paths.reverse()
         
         if uSeqPerClass != 0:
             paths = paths[0:uSeqPerClass]
