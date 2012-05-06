@@ -27,127 +27,87 @@ OUTPUT = 2
 ## -----------------------------------------------------------------------------
 ## save function
 ## -----------------------------------------------------------------------------
-def save(uNetwork, uPath):
-    """Saves a network on file, in the speficied path."""
-    ## save the network spec
-    out = open(uPath + "saved_net.py", "w")
+def save(uNetwork, uDir):
+    """Saves a network on file, in the specified directory."""
+    ## first of all, save the network spec
+    out = open(uDir + "net_spec.py", "w")
     out.write("spec = " + str(uNetwork.spec))
-    out.write("\n")
-    out.write("\n")
-
+    out.close()
     
-    ## for each layer, save the node's configuration
+    ## then, save the state of each layer
     layers = uNetwork.layers
 
-    out.write("layers = [")
     for l in range(len(layers) - 1):
-        
         if layers[l].node_sharing:
-            ## save just the first node
-            out.write("[[")
+            ## save just one node
             layers[l].nodes[0][0].input_channel.put("clone_state")
             state = layers[l].nodes[0][0].output_channel.get()
             
-            out.write("{")
-            out.write("'coincidences' : " + str(state['coincidences'].tolist()) + ",")
-            out.write("'temporal_groups' : " + str(state['temporal_groups']) + ",")
-            out.write("'PCG' : " + str(state['PCG'].tolist()))
-            out.write("},")
-            out.write("]],")
-            
+            ## save coincidences and PCG
+            np.save(uDir + str(l) + ".0.0.coincidences", state['coincidences'])
+            np.save(uDir + str(l) + ".0.0.PCG", state['PCG'])
+
         else:
-            ## save all nodes
-            out.write("[")
-            for i in range(len(layers[l].nodes)):
-                out.write("[")
+            for i in range(len(layers[l].nodes)):            
                 for j in range(len(layers[l].nodes[i])):
                     layers[l].nodes[i][j].input_channel.put("clone_state")
                     state = layers[l].nodes[i][j].output_channel.get()
-        
-                    out.write("{")
-                    out.write("'coincidences' : " + str(state['coincidences'].tolist()) + ",")
-                    out.write("'temporal_groups' : " + str(state['temporal_groups']) + ",")
-                    out.write("'PCG' : " + str(state['PCG'].tolist()))
-                    out.write("},")
-                out.write("],")
-            out.write("],")
-    
-    ## save the last node, as well
+
+                    np.save(uDir + str(l) + "." + str(i) + "." + str(j) + ".coincidences", state['coincidences'])
+                    np.save(uDir + str(l) + "." + str(i) + "." + str(j) + ".PCG", state['PCG'])
+
+    ## then, save also the output layer
     layers[-1].nodes[0][0].input_channel.put("clone_state")
     state = layers[-1].nodes[0][0].output_channel.get()
-    out.write("[[")
-    out.write("{")
-    out.write("'coincidences' : " + str(state['coincidences'].tolist()) + ",")
-    out.write("'PCW' : " + str(state['PCW'].tolist()) + ",")
-    out.write("'cls_prior_prob' : " + str(state['cls_prior_prob'].tolist()))
-    out.write("}")
-    out.write("]]]")
-    out.close()
+    np.save(uDir + str(len(layers) - 1) + ".0.0.coincidences", state['coincidences'])
+    np.save(uDir + str(len(layers) - 1) + ".0.0.cls_prior_prob", state['cls_prior_prob'])
+    np.save(uDir + str(len(layers) - 1) + ".0.0.PCW", state['PCW'])
 
 
 ## -----------------------------------------------------------------------------
 ## load function
 ## -----------------------------------------------------------------------------
-def load(uPath):
-    """Loads a network from file."""
+def load(uDir):
+    """Loads a network from a given directory."""
     import sys
-    sys.path.append(uPath)
-    import saved_net
+    sys.path.append(uDir)
+    from net_spec import spec
         
-    builder = NetworkBuilder(saved_net.spec)
+    builder = NetworkBuilder(spec)
     htm = builder.build()
     htm.start()
     
     ## restore each node state
     layers = htm.layers
-    layers_spec = saved_net.spec
-    layers_data = saved_net.layers
     
     for l in range(len(layers) - 1):
-        (r,c) = layers_spec[l]['shape']
+        (r,c) = spec[l]['shape']
 
-        if layers_spec[l]['node_sharing']:
-
-            layers_data[l][0][0]['coincidences'] = \
-                np.array(layers_data[l][0][0]['coincidences'])
-            
-            ## !FIXME temporal groups here
-
-            layers_data[l][0][0]['PCG'] = \
-                np.array(layers_data[l][0][0]['PCG'])
+        if layers[l].node_sharing:
+            state = {}
+            state['coincidences'] = np.load(uDir + str(l) + ".0.0.coincidences.npy")
+            state['temporal_groups'] = [] ## !FIXME temporal groups should be saved, first
+            state['PCG'] = np.load(uDir + str(l) + ".0.0.PCG.npy")
 
             for i in range(r):
                 for j in range(c):
-                    layers[l].nodes[i][j].input_channel.put(("set_state", 
-                                                             layers_data[l][0][0]))
+                    layers[l].nodes[i][j].input_channel.put(("set_state", state))
 
-    else:
-        for i in range(r):
-            for j in range(c):
-
-                layers_data[l][i][j]['coincidences'] = \
-                    np.array(layers_data[l][i][j]['coincidences'])
-                
-                ## !FIXME temporal groups here
-
-                layers_data[l][i][j]['PCG'] = \
-                    np.array(layers_data[l][i][j]['PCG'])
-
-                layers[l].nodes[i][j].input_channel.put(("set_state", 
-                                                         layers_data[l][i][j]))
-    
-    ## restore the state of the output node
-    layers_data[-1][0][0]['coincidences'] = \
-        np.array(layers_data[-1][0][0]['coincidences'])
-    
-    layers_data[-1][0][0]['cls_prior_prob'] = \
-        np.array(layers_data[-1][0][0]['cls_prior_prob'])
-
-    layers_data[-1][0][0]['PCW'] = \
-        np.array(layers_data[-1][0][0]['PCW'])
-
-    layers[-1].nodes[0][0].input_channel.put(("set_state", 
-                                             layers_data[-1][0][0]))
+        else:
+            for i in range(r):
+                for j in range(c):
+                    state = {}
+                    state['coincidences'] = np.load(uDir + str(l) + "." + str(i) + "." + str(j) + ".coincidences.npy")
+                    state['temporal_groups'] = [] ## !FIXME temporal groups should be saved, first
+                    state['PCG'] = np.load(uDir + str(l) + "." + str(i) + "." + str(j) + ".PCG.npy")
+                    layers[l].nodes[i][j].input_channel.put(("set_state", state))
+        
+    ## restore also last node's state
+    state = {}
+    state['coincidences'] = np.load(uDir + str(len(layers) - 1) + ".0.0.coincidences.npy")
+    state['cls_prior_prob'] = np.load(uDir + str(len(layers) - 1) + ".0.0.cls_prior_prob.npy")
+    state['PCW'] = np.load(uDir + str(len(layers) - 1) + ".0.0.PCW.npy")
+    layers[-1].nodes[0][0].input_channel.put(("set_state", state))
 
     return htm
 
