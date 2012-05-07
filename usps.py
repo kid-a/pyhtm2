@@ -248,9 +248,7 @@ def seq_generator(uClasses, uPath, uType, uSeqCount, uSeqPerClass=0):
         
         if uSeqPerClass != 0:
             paths = paths[0:uSeqPerClass]
-            
-        uSeqCount[uType] = 0
-        
+                    
         for i in paths:
             image = read(uPath + '/' + c + '/' + i)
             sequence = make_training_seq(image, uType, uClass=int(c))
@@ -269,6 +267,10 @@ def get_training_sequences(uDir, uSeqPerClass=0, uSeqCount={}, make_generators=T
     numbers = os.listdir(path)
     numbers.sort()
     numbers.reverse()
+
+    uSeqCount[network.ENTRY] = 0
+    uSeqCount[network.INTERMEDIATE] = 0
+    uSeqCount[network.OUTPUT] = 0
 
     if make_generators:
         sequences[network.ENTRY] = seq_generator(numbers, path, 
