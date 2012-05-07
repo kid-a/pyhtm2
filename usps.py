@@ -240,7 +240,7 @@ def make_sequence(uClasses, uPath, uType, uSeqPerClass=0):
     return sequence
 
 
-def seq_generator(uClasses, uPath, uType, uSeqPerClass=0):
+def seq_generator(uClasses, uPath, uType, uSeqCount, uSeqPerClass=0):
     for c in uClasses:
         paths = os.listdir(uPath + '/' + c)
         paths.sort()
@@ -248,15 +248,18 @@ def seq_generator(uClasses, uPath, uType, uSeqPerClass=0):
         
         if uSeqPerClass != 0:
             paths = paths[0:uSeqPerClass]
+            
+        uSeqCount[uType] = 0
         
         for i in paths:
             image = read(uPath + '/' + c + '/' + i)
             sequence = make_training_seq(image, uType, uClass=int(c))
             for s in sequence:
+                uSeqCount[uType] += 1
                 yield s
 
 
-def get_training_sequences(uDir, uSeqPerClass=0, make_generators=True):
+def get_training_sequences(uDir, uSeqPerClass=0, uSeqCount={}, make_generators=True):
     path = BASEPATH + '/' + uDir
 
     sequences = {network.ENTRY : [],
@@ -269,13 +272,19 @@ def get_training_sequences(uDir, uSeqPerClass=0, make_generators=True):
 
     if make_generators:
         sequences[network.ENTRY] = seq_generator(numbers, path, 
-                                                 network.ENTRY, uSeqPerClass)
+                                                 network.ENTRY, 
+                                                 uSeqCount, 
+                                                 uSeqPerClass)
         
         sequences[network.INTERMEDIATE] = seq_generator(numbers, path, 
-                                                        network.INTERMEDIATE, uSeqPerClass)
+                                                        network.INTERMEDIATE, 
+                                                        uSeqCount, 
+                                                        uSeqPerClass)
 
         sequences[network.OUTPUT] = seq_generator(numbers, path, 
-                                                  network.OUTPUT, uSeqPerClass)
+                                                  network.OUTPUT,
+                                                  uSeqCount, 
+                                                  uSeqPerClass)
         return sequences
         
     else:
