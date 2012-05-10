@@ -7,7 +7,6 @@ import sys
 import utils
 
 
-
 ## -----------------------------------------------------------------------------
 ## compute_widx
 ## -----------------------------------------------------------------------------
@@ -19,9 +18,23 @@ def compute_widx(msg):
 
 
 ## -----------------------------------------------------------------------------
-## widx_distance
+## widx_distance1
 ## -----------------------------------------------------------------------------
-def widx_distance(diff): return (diff != 0).sum()
+def widx_distance1(row): 
+    return (row != 0).sum()
+
+
+## -----------------------------------------------------------------------------
+## widx_distance2
+## -----------------------------------------------------------------------------
+def widx_distance2(array): 
+    return (array != 0).sum(axis=1)
+
+
+## -----------------------------------------------------------------------------
+## vect_widx_distance
+## -----------------------------------------------------------------------------
+#vect_widx_distance = np.vectorize(widx_distance)
 
 
 ## -----------------------------------------------------------------------------
@@ -90,7 +103,7 @@ class SpatialPooler(object):
     def closest_coincidence(self, uCoincidences, uInputMsg): 
         """Compute the distance of each coincidence from a given input."""       
         w = compute_widx(uInputMsg)
-        distances = np.apply_along_axis(widx_distance, 1, (uCoincidences - w))
+        distances = widx_distance2(uCoincidences - w)
         k = np.argmin(distances)
         minimum = distances[k]
         
@@ -225,3 +238,23 @@ class OutputSpatialPooler(SpatialPooler):
         uNodeState['PCW'] = PCW
             
     def update_TAM(self, uNodeState): pass
+
+
+if __name__ == "__main__":
+    ## profile inc_rows_cols
+    import profile
+
+    p = IntermediateSpatialPooler()
+    
+    def profile_clustering():
+        coincidences = np.random.randint(0, 100, size=(12000, 4))
+        input_msg = [np.random.random((1, 10)),
+                     np.random.random((1, 10)),
+                     np.random.random((1, 10)),
+                     np.random.random((1, 10))]
+
+
+        p.closest_coincidence(coincidences, input_msg)
+
+    profile.run("profile_clustering()")
+    
