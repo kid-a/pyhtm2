@@ -1,5 +1,4 @@
-## a module for array/matrix manipulation
-
+## global import ---------------------------------------------------------------
 import numpy as np
 
 
@@ -7,10 +6,11 @@ def inc_rows_cols(array):
     """ Adds one row and one column to a given array.
     Fills new fields with zeros."""
     (rows, cols) = array.shape
-    array = np.hstack((array, np.zeros((rows, 1))))
-    array = np.vstack((array, np.zeros((1, cols + 1))))
+    new_array = np.zeros((rows + 1, cols + 1))
+    new_array[:rows,:cols] = array
 
-    return array
+    del array
+    return new_array
     
 
 def transpose(array):
@@ -43,6 +43,18 @@ def resize(array, new_dims):
     new_array = np.zeros(new_dims)
     new_array[0:rows, 0:cols] = array
     return new_array
+
+
+if __name__ == "__main__":
+    ## profile inc_rows_cols
+    import profile
+
+    def enlarge_matrix():
+        a = np.random.random((12000, 4))
+        for i in range(400):
+            a = inc_rows_cols(a)
+    
+    profile.run("enlarge_matrix()")
     
     
     

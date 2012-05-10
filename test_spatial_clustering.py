@@ -4,9 +4,6 @@ import numpy as np
 import pytest
 
 
-
-
-
 ## test the Entry Temporal Pooler
 @pytest.mark.randomize(("size1", int), min_num=1, max_num=10)
 @pytest.mark.randomize(("size2", int), min_num=1, max_num=10, ncalls=10)
