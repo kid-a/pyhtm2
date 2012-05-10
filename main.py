@@ -53,7 +53,10 @@ if __name__ == "__main__":
         sequences = usps.get_training_sequences(directory, uSeqCount=seq_count)
         
         print "Starting training..."
-        htm.train(sequences)
+        import profile
+        
+        profile.runctx('htm.train(sequences)', globals(), {'htm':htm,
+                                                           'sequences':sequences})
         
         print "Saving network on file..."
         try: os.mkdir("usps/" + directory)
