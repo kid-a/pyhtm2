@@ -14,6 +14,7 @@ from temporal_clustering import TemporalPooler
 from inference import EntryInferenceMaker
 from inference import IntermediateInferenceMaker
 from inference import OutputInferenceMaker
+from inference import ActivationRecorder
 from debug import debug_print
 import utils
 
@@ -67,11 +68,16 @@ def save(uNetwork, uDir):
 ## -----------------------------------------------------------------------------
 ## load function
 ## -----------------------------------------------------------------------------
-def load(uDir):
+def load(uDir, uSigma=None):
     """Loads a network from a given directory."""
     import sys
     sys.path.append(uDir)
     from net_spec import spec
+
+    if uSigma != None:
+        spec[0]['sigma'] = uSigma
+        
+    print spec
         
     builder = NetworkBuilder(spec)
     htm = builder.build()
@@ -477,7 +483,7 @@ class NodeFactory(object):
             if uType == ENTRY:
                 state['input_msg'] = np.array([])
                 state['sigma'] = uNodeSpec['sigma']
-            
+                                    
         else: ## uType == OUTPUT
             state['cls_prior_prob'] = np.array([])
             state['PCW'] = np.array([[]])
@@ -489,6 +495,9 @@ class NodeFactory(object):
             strategy['finalizer'] = TemporalPooler()
             strategy['inference_maker'] = EntryInferenceMaker()
             strategy['state_handler'] = NodeStateHandler()
+            
+            if uName == (0,0):
+                strategy['inference_maker'].activation_recorder = ActivationRecorder()
             
         elif uType == INTERMEDIATE:
             strategy['trainer'] = IntermediateSpatialPooler()

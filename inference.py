@@ -6,6 +6,9 @@ import numpy as np
 import utils
 
 
+RECORD_ACTIVATION = True
+
+
 ## -----------------------------------------------------------------------------
 ## InferenceMaker Class
 ## -----------------------------------------------------------------------------
@@ -93,6 +96,28 @@ class OutputInferenceMaker(InferenceMaker):
         z = self.dens_over_matrix(y, PCW)
         p = self.class_post_prob(z, cls_prior_prob)
         uNodeState['output_msg'] = p
+
+## -----------------------------------------------------------------------------
+## OutputInferenceMaker Class
+## -----------------------------------------------------------------------------
+class ActivationRecorder(object):
+    def __init__(self, *args, **kwargs):
+        self.activation = []
+
+    def record(self, uCoincidences, uY, uSigma):
+        if RECORD_ACTIVATION:
+            (total_coinc, _) = uCoincidences.shape
+            three_percent = np.ceil(total_coinc * 3 / 100.0)
+            
+            ordered_y = uY.tolist()
+            ordered_y = sorted(ordered_y)[::-1]
+            ordered_y = ordered_y[:int(three_percent)]
+            
+            three_percent_activation = sum(ordered_y)
+            self.activation.append(three_percent_activation/np.sum(uY))
+            
+            ## save on file, constantly
+            (np.array(self.activation)).tofile("activation-sigma-" + str(uSigma) + ".txt", sep=",")
 
 
 if __name__ == "__main__":

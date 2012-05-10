@@ -32,7 +32,8 @@ if __name__ == "__main__":
     print "2. Train HTM on USPS train1000 training set"
     print "3. Train HTM on USPS full training set (over 7000 elements)"
     print "4. Load HTM from file"
-    print "5. Quit"
+    print "5. Tune Sigma"
+    print "6. Quit"
     choice = int(raw_input())
     
     if choice == 1 or choice == 2 or choice == 3:
@@ -73,6 +74,50 @@ if __name__ == "__main__":
         directory = raw_input()
         htm = load(directory)
         
+    elif choice == 5:
+        print "Recording activation levels..."
+        
+        sigmas = [75, 100, 125, 150, 175, 200]
+
+        seq_count = {}
+        sequences = usps.get_training_sequences("train100", uSeqCount=seq_count)
+        sequence = sequences[network.ENTRY]
+
+        coincidences = np.load("usps/train100/0.0.0.coincidences.npy")
+        
+        from network import EntryInferenceMaker
+        inf_maker = EntryInferenceMaker()
+        
+        for sigma in sigmas:
+            print "Recording activation levels for sigma = ", str(sigma)
+
+            activation_levels = []
+            sequences = usps.get_training_sequences("train100", uSeqCount=seq_count)
+            sequence = sequences[network.ENTRY]
+
+            for pattern in sequence:
+                pattern = pattern[0]
+                pattern = pattern[0:4,0:4]
+                pattern = pattern.reshape((1,16))
+                
+                y = inf_maker.dens_over_coinc(coincidences, pattern, sigma)
+                
+                (total_coinc, _) = coincidences.shape
+                three_percent = np.ceil(total_coinc * 3 / 100.0)
+            
+                ordered_y = y.tolist()
+                ordered_y = sorted(ordered_y)[::-1]
+                ordered_y = ordered_y[:int(three_percent)]
+                
+                three_percent_activation = sum(ordered_y)
+                activation_levels.append(three_percent_activation/np.sum(y))
+            
+            np.save("charts/activation-sigma-" + str(sigma) + ".txt", np.array(activation_levels))
+                
+        print "Number of trials: ", seq_count[network.ENTRY]
+                
+        exit(0)
+
     else:
         exit(0)
 
@@ -114,7 +159,7 @@ if __name__ == "__main__":
         print "Total:", total
         print "Correct:", correct
         print "Correctness ratio:", correct/float(total)
-
+        
     else:
         exit(0)
 

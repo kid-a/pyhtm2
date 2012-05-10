@@ -58,11 +58,14 @@ def make_training_seq(uImage, uLayer, uWindowSize=(4,4), uClass=None):
                            image,
                            WHITE * np.ones((uWindowSize[0] - 1, 
                                             cols + 2 * uWindowSize[1] - 2))))
-
+        
         ## perform the scans
         (rows, cols) = image.shape
         vertical_sequence = range(rows - uWindowSize[0] + 1)
         horizontal_sequence = range(cols - uWindowSize[1] + 1)
+
+        n = 0
+        k = 0
         
         ## horizontal scan
         horizontal_sequence.reverse()
@@ -76,6 +79,8 @@ def make_training_seq(uImage, uLayer, uWindowSize=(4,4), uClass=None):
                 img = image[i:(i + uWindowSize[0]), 
                             j:(j + uWindowSize[1])]
                 
+                save(img, "blah1.bmp")
+                
                 img = np.hstack((img, 
                                  WHITE * np.ones((uWindowSize[0], 
                                                   orig_cols - uWindowSize[1]))))
@@ -83,36 +88,40 @@ def make_training_seq(uImage, uLayer, uWindowSize=(4,4), uClass=None):
                 img = np.vstack((img,
                                  WHITE * np.ones((orig_rows - uWindowSize[0],
                                                   orig_cols))))
-                    
+                
                 sequence.append((img, {'temporal_gap' : temporal_gap}))
+                
+                n += 1
 
+            n = 0
+            k+=1
             horizontal_sequence.reverse()
 
         ## vertical scan
-        horizontal_sequence = range(cols - uWindowSize[1] + 1)
-        horizontal_sequence.reverse()
-        vertical_sequence.reverse()
+        # horizontal_sequence = range(cols - uWindowSize[1] + 1)
+        # horizontal_sequence.reverse()
+        # vertical_sequence.reverse()
         
-        for j in horizontal_sequence:
-            for i in vertical_sequence:
+        # for j in horizontal_sequence:
+        #     for i in vertical_sequence:
 
-                if i == 0 and j == 0: temporal_gap = True
-                else: temporal_gap = False
+        #         if i == 0 and j == 0: temporal_gap = True
+        #         else: temporal_gap = False
 
-                img = image[i:(i + uWindowSize[0]), 
-                            j:(j + uWindowSize[1])]
+        #         img = image[i:(i + uWindowSize[0]), 
+        #                     j:(j + uWindowSize[1])]
 
-                img = np.hstack((img, 
-                                 WHITE * np.ones((uWindowSize[0], 
-                                                  orig_cols - uWindowSize[1]))))
+        #         img = np.hstack((img, 
+        #                          WHITE * np.ones((uWindowSize[0], 
+        #                                           orig_cols - uWindowSize[1]))))
                 
-                img = np.vstack((img,
-                                 WHITE * np.ones((orig_rows - uWindowSize[0],
-                                                  orig_cols))))
+        #         img = np.vstack((img,
+        #                          WHITE * np.ones((orig_rows - uWindowSize[0],
+        #                                           orig_cols))))
 
-                sequence.append((img, {'temporal_gap' : temporal_gap}))
+        #         sequence.append((img, {'temporal_gap' : temporal_gap}))
 
-            vertical_sequence.reverse()
+        #     vertical_sequence.reverse()
 
         return sequence
 
@@ -128,7 +137,7 @@ def make_training_seq(uImage, uLayer, uWindowSize=(4,4), uClass=None):
         
         image = np.vstack((WHITE * np.ones((rows - foreground_rows, cols)),
                            image))
-                
+                        
         ## horizontal scan
         direction = LEFT        
         first = True
@@ -317,9 +326,17 @@ def get_training_sequences(uDir, uSeqPerClass=0, uSeqCount={}, make_generators=T
 
 
 if __name__ == "__main__":
-    pass
-    #i = read("data_sets/train/5/41.bmp")
-    #print len(make_training_seq(i, network.ENTRY))
+    image = read("data_sets/train/5/41.bmp")
+    # image = read("data_sets/train/0/110.bmp")
+    sequence = make_training_seq(image, network.ENTRY)
+    
+    for i in range(len(sequence)):
+        print sequence[i][1]
+        print i
+        save(sequence[i][0][0:4,0:4], "saved-sequences/" + str(i) + ".bmp")
+    
+    
+    # print len(make_training_seq(i, network.ENTRY))
     # print make_training_seq(i, network.INTERMEDIATE)
     # print make_training_seq(i, network.OUTPUT)
 

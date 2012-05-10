@@ -1,4 +1,5 @@
 ## global import ---------------------------------------------------------------
+import profile
 import numpy as np
 import sys
 
@@ -32,7 +33,8 @@ class SpatialPooler(object):
     def train(self, uNodeState, uInputInfo):
         """Train a node on the current input."""
         ## select the active coincidence
-        self.select_active_coinc(uNodeState)
+        profile.runctx('self.select_active_coinc(n)', globals(), {'n':uNodeState,
+                                                                  'self':self})
         self.update_TAM(uNodeState, uInputInfo)
                 
     def select_active_coinc(self, uNodeState):
