@@ -1,6 +1,7 @@
 ## global import ---------------------------------------------------------------
 from multiprocessing import Process
-from multiprocessing import Queue
+#from multiprocessing import Queue
+from multiprocessing import Pipe
 import numpy as np
 import math
 import time
@@ -40,8 +41,8 @@ def save(uNetwork, uDir):
     for l in range(len(layers) - 1):
         if layers[l].node_sharing:
             ## save just one node
-            layers[l].nodes[0][0].input_channel.put("clone_state")
-            state = layers[l].nodes[0][0].output_channel.get()
+            layers[l].pipes[0][0].send("clone_state")
+            state = layers[l].pipes[0][0].recv()
             
             ## save coincidences and PCG
             np.save(uDir + str(l) + ".0.0.coincidences", state['coincidences'])
@@ -50,15 +51,15 @@ def save(uNetwork, uDir):
         else:
             for i in range(len(layers[l].nodes)):            
                 for j in range(len(layers[l].nodes[i])):
-                    layers[l].nodes[i][j].input_channel.put("clone_state")
-                    state = layers[l].nodes[i][j].output_channel.get()
+                    layers[l].pipes[i][j].send("clone_state")
+                    state = layers[l].pipes[i][j].recv()
 
                     np.save(uDir + str(l) + "." + str(i) + "." + str(j) + ".coincidences", state['coincidences'])
                     np.save(uDir + str(l) + "." + str(i) + "." + str(j) + ".PCG", state['PCG'])
 
     ## then, save also the output layer
-    layers[-1].nodes[0][0].input_channel.put("clone_state")
-    state = layers[-1].nodes[0][0].output_channel.get()
+    layers[-1].pipes[0][0].send("clone_state")
+    state = layers[-1].pipes[0][0].recv()
     np.save(uDir + str(len(layers) - 1) + ".0.0.coincidences", state['coincidences'])
     np.save(uDir + str(len(layers) - 1) + ".0.0.cls_prior_prob", state['cls_prior_prob'])
     np.save(uDir + str(len(layers) - 1) + ".0.0.PCW", state['PCW'])
@@ -91,7 +92,7 @@ def load(uDir):
 
             for i in range(r):
                 for j in range(c):
-                    layers[l].nodes[i][j].input_channel.put(("set_state", state))
+                    layers[l].pipes[i][j].send(("set_state", state))
 
         else:
             for i in range(r):
@@ -100,16 +101,34 @@ def load(uDir):
                     state['coincidences'] = np.load(uDir + str(l) + "." + str(i) + "." + str(j) + ".coincidences.npy")
                     state['temporal_groups'] = [] ## !FIXME temporal groups should be saved, first
                     state['PCG'] = np.load(uDir + str(l) + "." + str(i) + "." + str(j) + ".PCG.npy")
-                    layers[l].nodes[i][j].input_channel.put(("set_state", state))
+                    layers[l].pipes[i][j].send(("set_state", state))
         
     ## restore also last node's state
     state = {}
     state['coincidences'] = np.load(uDir + str(len(layers) - 1) + ".0.0.coincidences.npy")
     state['cls_prior_prob'] = np.load(uDir + str(len(layers) - 1) + ".0.0.cls_prior_prob.npy")
     state['PCW'] = np.load(uDir + str(len(layers) - 1) + ".0.0.PCW.npy")
-    layers[-1].nodes[0][0].input_channel.put(("set_state", state))
+    layers[-1].pipes[0][0].send(("set_state", state))
 
     return htm
+
+
+## -----------------------------------------------------------------------------
+## send_array function
+## -----------------------------------------------------------------------------
+def send_array(uConnection, uMsg, uArray):
+    uConnection.send((uMsg, {'dtype' : uArray.dtype,
+                             'shape' : uArray.shape}))
+    uConnection.send_bytes(uArray)
+
+## -----------------------------------------------------------------------------
+## recv_array function
+## -----------------------------------------------------------------------------
+def recv_array(uConnection, uType, uShape):
+    msg = uConnection.recv_bytes()
+    array = np.frombuffer(msg, dtype=uType)
+    if len(uShape) > 1: array = array.reshape(uShape)
+    return array
 
 
 ## -----------------------------------------------------------------------------
@@ -121,8 +140,7 @@ class Node(Process):
         super(Node, self).__init__()
         self.state = uState
         self.strategy = uStrategy
-        self.input_channel = Queue()
-        self.output_channel = Queue()
+        self.pipe = None
         
     def set_state(self, uState):
         """Set the state of a node. This operation makes sense only for all nodes
@@ -136,27 +154,27 @@ class Node(Process):
         
     def run(self):
         while True:
-            msg = self.input_channel.get()
+            msg = self.pipe.recv()
             #debug_print(str(self.state['name']) + str(msg))
 
             if msg == "finalize":
                 debug_print("Finalizing node " + str(self.state['name']))
                 self.strategy['finalizer'].finalize(self.state)
-                self.output_channel.put("ok")
+                self.pipe.send("ok")
 
             elif msg == "inference":
                 debug_print("Doing inference on node " + str(self.state['name']))
                 self.strategy['inference_maker'].inference(self.state)
                 # debug_print("Node " + str(self.state['name']) + " output message: " +\
                 #                 str(self.state['output_msg']))
-                self.output_channel.put("ok")
+                self.pipe.send("ok")
 
             elif msg == "get_output":
-                self.output_channel.put(self.state['output_msg'])
+                send_array(self.pipe, "", self.state['output_msg'])
                 
             elif msg == "clone_state":
                 debug_print("Cloning node " + str(self.state['name']) + " state")
-                self.output_channel.put(self.clone_state())
+                self.pipe.send(self.clone_state())
 
             elif msg == "reset_input":
                 self.state['input_msg'] = []
@@ -175,32 +193,39 @@ class Node(Process):
                 debug_print("Node " + str(self.state['name']) + " coincidences: " + \
                                 str(self.state['coincidences'].shape))
                                        
-
                 # debug_print("Node " + str(self.state['name']) + \
                 #                 " new coincidences:" + \
                 #                 str(self.state['coincidences']))
 
-                self.output_channel.put("ok")
+                self.pipe.send("ok")
             
             elif msg[0] == "set_input":
-                self.state['input_msg'] = msg[1]
+                t = msg[1]['dtype']
+                s = msg[1]['shape']
+
+                input_pattern = recv_array(self.pipe, t, s)
+                self.state['input_msg'] = input_pattern
                 #print "input is", self.state['input_msg']
 
                 # debug_print(str(self.state['name']) + \
                 #                 " new input: " + \
                 #                 str(self.state['input_msg']))
-
-                self.output_channel.put("ok")
+                self.pipe.send("ok")
 
             elif msg[0] == "append_input":
-                self.state['input_msg'].append(msg[1])
+                t = msg[1]['dtype']
+                s = msg[1]['shape']
+
+                input_pattern = recv_array(self.pipe, t, s)
+                self.state['input_msg'].append(input_pattern)
+
                 #print "Node's new input", self.state['input_msg']
 
                 # debug_print(str(self.state['name']) + \
                 #                 " new input: " + \
                 #                 str(self.state['input_msg']))
                 
-                self.output_channel.put("ok")
+                self.pipe.send("ok")
 
             else:
                 debug_print(str(self.state['name']) + \
@@ -213,64 +238,65 @@ class Node(Process):
 class Layer(object):
     def __init__(self, *args, **kwargs):
         self.nodes = [[]]
+        self.pipes = [[]]
         self.node_sharing = False
 
     def train(self, uInputInfo):
         """Train the layer on the current input pattern."""
         if self.node_sharing:
             ## train just one node,
-            self.nodes[0][0].input_channel.put(("train", uInputInfo))
-            self.nodes[0][0].output_channel.get()
+            self.pipes[0][0].send(("train", uInputInfo))
+            self.pipes[0][0].recv()
             
         else:
             ## start each node's training
             for i in range(len(self.nodes)):
                 for j in range(len(self.nodes[i])):
-                    self.nodes[i][j].input_channel.put(("train", uInputInfo))
+                    self.pipes[i][j].send(("train", uInputInfo))
 
             ## wait for the training to be finished
             for i in range(len(self.nodes)):
                 for j in range(len(self.nodes[i])):
-                    self.nodes[i][j].output_channel.get()
+                    self.pipes[i][j].recv()
         
     def finalize(self):
         """Finalize training on each node."""
         if self.node_sharing:
             ## finalize just one node,
-            self.nodes[0][0].input_channel.put("finalize")
-            self.nodes[0][0].output_channel.get()
+            self.pipes[0][0].send("finalize")
+            self.pipes[0][0].recv()
 
             ## then clone its state
             ## into all the other nodes
-            self.nodes[0][0].input_channel.put("clone_state")
-            state = self.nodes[0][0].output_channel.get()
+            self.pipes[0][0].send("clone_state")
+            state = self.pipes[0][0].recv()
 
             for i in range(len(self.nodes)):
                 for j in range(len(self.nodes[i])):
                     if i == 0 and j == 0: continue
-                    self.nodes[i][j].input_channel.put(("set_state", state))
+                    self.pipes[i][j].send(("set_state", state))
 
         else:
             ## start each node's finalization procedure
             for i in range(len(self.nodes)):
                 for j in range(len(self.nodes[i])):
-                    self.nodes[i][j].input_channel.put("finalize")
+                    self.pipes[i][j].send("finalize")
 
             ## wait for the finalization to be completed
             for i in range(len(self.nodes)):
                 for j in range(len(self.nodes[i])):
-                    self.nodes[i][j].output_channel.get()
+                    self.pipes[i][j].recv()
 
     def inference(self):
         """Perform inference on the current input."""
         for i in range(len(self.nodes)):
             for j in range(len(self.nodes[i])):
-                self.nodes[i][j].input_channel.put("inference")
+                self.pipes[i][j].send("inference")
                 
         ## wait for the finalization to be completed
         for i in range(len(self.nodes)):
             for j in range(len(self.nodes[i])):
-                self.nodes[i][j].output_channel.get()
+                self.pipes[i][j].recv()
 
 
 ## -----------------------------------------------------------------------------
@@ -299,7 +325,7 @@ class Network(object):
             ## for each training sequence
             for pattern in uTrainingSequences[layers_type[i]]:
                 (input_raw, input_info) = pattern
-
+                
                 if i == ENTRY: self.expose(input_raw, uJustUpperLeftCorner=True)
                 else: self.expose(input_raw)
                     
@@ -319,13 +345,18 @@ class Network(object):
             self.propagate(m, m + 1)
 
         ## make inference on the output node
-        self.layers[-1].nodes[0][0].input_channel.put("inference")
-        self.layers[-1].nodes[0][0].output_channel.get()
+        self.layers[-1].pipes[0][0].send("inference")
+        self.layers[-1].pipes[0][0].recv()
 
         ## read its output
-        self.layers[-1].nodes[0][0].input_channel.put("get_output")
-        msg = self.layers[-1].nodes[0][0].output_channel.get()
-        return msg
+        self.layers[-1].pipes[0][0].send("get_output")
+        msg = self.layers[-1].pipes[0][0].recv()
+
+        t = msg[1]['dtype']
+        s = msg[1]['shape']
+        output = recv_array(self.layers[-1].pipes[0][0], t, s)
+
+        return output
 
     def propagate(self, uFrom, uTo): 
         f = self.layers[uFrom]
@@ -333,34 +364,44 @@ class Network(object):
         
         for i in range(len(t.nodes)):
             for j in range(len(t.nodes[i])):
-                t.nodes[i][j].input_channel.put("reset_input")
+                t.pipes[i][j].send("reset_input")
 
         if len(t.nodes[0]) == 1: ## if last node
             for i in range(len(f.nodes)):
                 for j in range(len(f.nodes[i])):
-                    f.nodes[i][j].input_channel.put("get_output")
-                    msg = f.nodes[i][j].output_channel.get()
-                    t.nodes[0][0].input_channel.put(("append_input", msg))
-                    t.nodes[0][0].output_channel.get()
+                    f.pipes[i][j].send("get_output")
+                    msg = f.pipes[i][j].recv()
+                    
+                    ty = msg[1]['dtype']
+                    s = msg[1]['shape']
+                    output = recv_array(f.pipes[i][j], ty, s)
+                    
+                    send_array(t.pipes[0][0], "append_input", output)
+                    t.pipes[0][0].recv()
 
         else:
             for i in range(len(f.nodes)):
                 upper_i = math.floor(i / float(len(t.nodes)))
             
                 for j in range(len(f.nodes[i])):
-                    
                     upper_j = math.floor(j / float(len(t.nodes[0])))
-                    f.nodes[i][j].input_channel.put("get_output")
-                    msg = f.nodes[i][j].output_channel.get()
-                    t.nodes[int(upper_i)][int(upper_j)].input_channel.put(("append_input", msg))
-                    t.nodes[int(upper_i)][int(upper_j)].output_channel.get()
+
+                    f.pipes[i][j].send("get_output")
+                    msg = f.pipes[i][j].recv()
+                    
+                    ty = msg[1]['dtype']
+                    s = msg[1]['shape']
+                    output = recv_array(f.pipes[i][j], ty, s)
+                    
+                    send_array(t.pipes[int(upper_i)][int(upper_j)], "append_input", output)
+                    t.pipes[int(upper_i)][int(upper_j)].recv()
     
     def expose(self, uInput, uJustUpperLeftCorner=False):
         """Expose an input pattern to first layer's nodes."""
         (input_height, input_width) = uInput.shape
         (layer_height, layer_width) = (len(self.layers[0].nodes), 
                                        len(self.layers[0].nodes))
-        
+
         patch_height = input_height / layer_height
         patch_width = input_width / layer_width
     
@@ -374,9 +415,8 @@ class Network(object):
                                starting_point_w : starting_point_w + patch_width]
                 
                 patch = np.reshape(patch, (1, patch.size))[0]
-    
-                node.input_channel.put(("set_input", patch))
-                node.output_channel.get()
+                send_array(self.layers[0].pipes[i][j], "set_input", patch)
+                self.layers[0].pipes[i][j].recv()
                 
                 if uJustUpperLeftCorner: return
 
@@ -532,6 +572,7 @@ class NetworkBuilder(object):
             (height, width) = self.spec[i]['shape']
             
             layer.nodes = []
+            layer.pipes = []
 
             try: layer.node_sharing = self.spec[i]['node_sharing']
             except: pass
@@ -539,11 +580,14 @@ class NetworkBuilder(object):
             ## create nodes
             for k in range(height):
                 layer.nodes.append([])
+                layer.pipes.append([])
 
                 for l in range(width):
                     node = self.node_factory.make_node((k,l), 
                                                        layers_type[i],
                                                        self.spec[i])
+                    (node.pipe, pipe) = Pipe()
+                    layer.pipes[k].append(pipe)
                     layer.nodes[k].append(node)
                     
             layers.append(layer)
