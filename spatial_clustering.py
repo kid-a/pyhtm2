@@ -85,10 +85,19 @@ class SpatialPooler(object):
             TAM = uNodeState['TAM']
             seen = uNodeState['seen']
 
-            coincidences = np.vstack((coincidences, compute_widx(input_msg)))
+            (rows, cols) = coincidences.shape
+            new_coincidences = np.zeros((rows + 1, cols))
+            new_coincidences[:rows,:cols] = coincidences
+            new_coincidences[rows,:] = compute_widx(input_msg)
+            coincidences = new_coincidences
+
             (k, _) = coincidences.shape
             k -= 1
-            seen = np.hstack((seen, 0))
+
+            (cols,) = seen.shape
+            new_seen = np.zeros(cols + 1)
+            new_seen[:cols] = seen
+            seen = new_seen
             
             ## resize TAM
             TAM = utils.inc_rows_cols(TAM)
@@ -150,10 +159,19 @@ class EntrySpatialPooler(SpatialPooler):
             seen = uNodeState['seen']
             TAM = uNodeState['TAM']
             
-            coincidences = np.vstack((coincidences, input_msg))
+            (rows, cols) = coincidences.shape
+            new_coincidences = np.zeros((rows + 1, cols))
+            new_coincidences[:rows,:cols] = coincidences
+            new_coincidences[rows,:] = input_msg
+            coincidences = new_coincidences
+
             (k, _) = coincidences.shape
             k -= 1
-            seen = np.hstack((seen, 0))
+
+            (cols,) = seen.shape
+            new_seen = np.zeros(cols + 1)
+            new_seen[:cols] = seen
+            seen = new_seen
 
             ## resize TAM
             TAM = utils.inc_rows_cols(TAM)
@@ -169,9 +187,6 @@ class EntrySpatialPooler(SpatialPooler):
         """Compute the distance of each coincidence from a given input."""
 
         distances = np.sqrt(np.sum(np.power(uCoincidences - uInputMsg, 2), axis=1))
-
-        # distances = np.sum(np.abs(uCoincidences - \
-        #                               uInputMsg) ** 2, axis=-1) ** (1./2)
             
         ## find the minimum
         k = np.argmin(distances)
@@ -208,7 +223,13 @@ class OutputSpatialPooler(SpatialPooler):
             
         else:
             coincidences = uNodeState['coincidences']
-            coincidences = np.vstack((coincidences, compute_widx(input_msg)))
+
+            (rows, cols) = coincidences.shape
+            new_coincidences = np.zeros((rows + 1, cols))
+            new_coincidences[:rows,:cols] = coincidences
+            new_coincidences[rows,:] = compute_widx(input_msg)
+            coincidences = new_coincidences
+            
             (k, _) = coincidences.shape
             k -= 1
             
