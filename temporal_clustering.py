@@ -79,7 +79,7 @@ class TemporalPooler(object):
             omega = set([k])
             unprocessed = [k]
             processed = []
-            
+                        
             while len(unprocessed) > 0 and len(processed) < max_group_size:
                 k = unprocessed[0] ## pick an unprocessed node
                 most_connected = self.top_most_connected(graph, k, uParams)
@@ -89,16 +89,7 @@ class TemporalPooler(object):
                 unprocessed.remove(k)
                 unprocessed.extend(most_connected)
                 unprocessed = list(set(unprocessed).difference(set(processed)))
-                
-                # if len(unprocessed) == 0 and \
-                #         len(omega) < self.min_group_size and \
-                #         len(tc) != 0:
-
-                #     (k, tc) = self.pop_highest_coincidence(tc)
-                #     omega.add(k)
-                #     unprocessed = [k]
-                #     continue
-                
+                           
             for n in omega:
                 remove_adjlist(n, graph)
                 remove_tc(n, tc)
@@ -169,6 +160,8 @@ class TemporalPooler(object):
         
         ## do the temporal clustering
         temporal_groups = self.greedy_temporal_clustering(TC, norm_TAM, params)
+        
+        print len(temporal_groups)
                 
         ## compute the PCG matrix
         PCG = self.compute_PCG(coincidence_priors, temporal_groups)

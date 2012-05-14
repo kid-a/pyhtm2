@@ -73,6 +73,7 @@ def make_training_seq(uImage, uLayer, uWindowSize=(4,4), uClass=None):
     """Make a training sequence out of an image."""
     sequence = []
 
+    save(uImage, "img.bmp")
     if uLayer == network.ENTRY:
         ## crop the foreground object
         (orig_rows, orig_cols) = uImage.shape
@@ -89,6 +90,7 @@ def make_training_seq(uImage, uLayer, uWindowSize=(4,4), uClass=None):
         ## horizontal scan
         horizontal_sequence.reverse()
 
+        k = 0
         for i in vertical_sequence:
             for j in horizontal_sequence:
                 
@@ -97,6 +99,9 @@ def make_training_seq(uImage, uLayer, uWindowSize=(4,4), uClass=None):
 
                 patch = image[i:(i + uWindowSize[0]), 
                               j:(j + uWindowSize[1])]
+
+                save(patch, "img"+ str(k)+".bmp")
+                k+=1
                 
                 img = WHITE * np.ones((orig_rows, orig_cols), dtype=np.uint8)
                 img[:uWindowSize[0],:uWindowSize[1]] = patch
@@ -110,28 +115,31 @@ def make_training_seq(uImage, uLayer, uWindowSize=(4,4), uClass=None):
 
         # save(image, "after.bmp")
 
-        # ## vertical scan
-        # (rows, cols) = image.shape
-        # horizontal_sequence = range(cols - uWindowSize[1] + 1)
-        # vertical_sequence = range(rows - uWindowSize[0] + 1)
-        # horizontal_sequence.reverse()
-        # vertical_sequence.reverse()
+        ## vertical scan
+        (rows, cols) = image.shape
+        horizontal_sequence = range(cols - uWindowSize[1] + 1)
+        vertical_sequence = range(rows - uWindowSize[0] + 1)
+        horizontal_sequence.reverse()
+        vertical_sequence.reverse()
                 
-        # for j in horizontal_sequence:
-        #     for i in vertical_sequence:
+        for j in horizontal_sequence:
+            for i in vertical_sequence:
 
-        #         if i == 0 and j == 0: temporal_gap = True
-        #         else: temporal_gap = False
+                if i == 0 and j == 0: temporal_gap = True
+                else: temporal_gap = False
                 
-        #         patch = image[i:(i + uWindowSize[0]), 
-        #                       j:(j + uWindowSize[1])]
-                
-        #         img = WHITE * np.ones((orig_rows, orig_cols), dtype=np.uint8)
-        #         img[:uWindowSize[0],:uWindowSize[1]] = patch
-                
-        #         sequence.append((img, {'temporal_gap' : temporal_gap}))
+                patch = image[i:(i + uWindowSize[0]), 
+                              j:(j + uWindowSize[1])]
 
-        #     vertical_sequence.reverse()
+                save(patch, "img"+ str(k)+".bmp")
+                k+=1
+
+                img = WHITE * np.ones((orig_rows, orig_cols), dtype=np.uint8)
+                img[:uWindowSize[0],:uWindowSize[1]] = patch
+                
+                sequence.append((img, {'temporal_gap' : temporal_gap}))
+
+            vertical_sequence.reverse()
 
         return sequence
 
@@ -245,8 +253,7 @@ def make_training_seq(uImage, uLayer, uWindowSize=(4,4), uClass=None):
         return sequence
 
 
-def make_seqs(uClasses, uPath, uType, uSeqPerClass=0):
-    
+def make_seqs(uClasses, uPath, uType, uSeqPerClass=0):    
     sequence = []
 
     for c in uClasses:
@@ -341,4 +348,8 @@ def get_training_sequences(uDir, uSeqPerClass=0,
 
 
 if __name__ == "__main__":
-    pass
+    t = get_training_sequences("train100/", make_generators=False)
+    print len(t[network.ENTRY])
+                               
+
+        

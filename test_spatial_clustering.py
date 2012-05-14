@@ -27,13 +27,17 @@ def test_entry_closest_coinc(size1, size2):
         c.append(r)
         
         
-    min_ = np.sqrt(np.sum(np.power(c[0] - input_msg, 2)))
+    min_ = np.sqrt(np.sum(np.power(np.array(c[0], dtype=np.double) - 
+                                   np.array(input_msg, dtype=np.double), 
+                                   2)))
         
     k = 0
     print 0, min_
 
     for i in range(1, len(c)):
-        dist = np.sqrt(np.sum(np.power(c[i] - input_msg, 2)))
+        dist = np.sqrt(np.sum(np.power(np.array(c[i], dtype=np.double) - 
+                                       np.array(input_msg, dtype=np.double), 
+                                       2)))
         print i, dist
         
         if dist < min_:
@@ -45,7 +49,7 @@ def test_entry_closest_coinc(size1, size2):
         coinc_matrix = np.vstack((coinc_matrix, c[i]))
                          
     res = p.closest_coincidence(coinc_matrix, input_msg)
-        
+    
     assert res[0] == k
     assert res[1] == min_
     assert res[1].dtype == np.float64
