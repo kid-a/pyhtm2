@@ -14,7 +14,7 @@ def compute_widx(msg):
     """Compute a widx, out of an input message."""
     widx = []
     for m in msg: widx.append(np.argmax(m))
-    return np.array(widx)
+    return np.array(widx, dtype=np.uint8)
 
 
 ## -----------------------------------------------------------------------------
@@ -59,7 +59,7 @@ class SpatialPooler(object):
             distance_thr = uNodeState['distance_thr']
             input_msg = uNodeState['input_msg']
             (k, minimum) = self.closest_coincidence(coincidences, input_msg)
-            
+                        
             if minimum > distance_thr:
                 k = self.make_new_coincidence(uNodeState)
         
@@ -75,7 +75,7 @@ class SpatialPooler(object):
         input_msg = uNodeState['input_msg']
 
         if uFirstCoinc:
-            coincidences = np.array([compute_widx(input_msg)])
+            coincidences = np.array([compute_widx(input_msg)], dtype=np.uint8)
             k = 0
             seen = np.array([1])
             TAM = np.array([[0]])
@@ -86,7 +86,7 @@ class SpatialPooler(object):
             seen = uNodeState['seen']
 
             (rows, cols) = coincidences.shape
-            new_coincidences = np.zeros((rows + 1, cols))
+            new_coincidences = np.zeros((rows + 1, cols), dtype=np.uint8)
             new_coincidences[:rows,:cols] = coincidences
             new_coincidences[rows,:] = compute_widx(input_msg)
             coincidences = new_coincidences
@@ -149,7 +149,7 @@ class EntrySpatialPooler(SpatialPooler):
         input_msg = uNodeState['input_msg']
 
         if uFirstCoinc:
-            coincidences = np.array([input_msg])
+            coincidences = np.array([input_msg], dtype=np.uint8)
             k = 0
             seen = np.array([1])
             TAM = np.array([[0]])
@@ -160,7 +160,7 @@ class EntrySpatialPooler(SpatialPooler):
             TAM = uNodeState['TAM']
             
             (rows, cols) = coincidences.shape
-            new_coincidences = np.zeros((rows + 1, cols))
+            new_coincidences = np.zeros((rows + 1, cols), dtype=np.uint8)
             new_coincidences[:rows,:cols] = coincidences
             new_coincidences[rows,:] = input_msg
             coincidences = new_coincidences
@@ -184,9 +184,13 @@ class EntrySpatialPooler(SpatialPooler):
         return k
     
     def closest_coincidence(self, uCoincidences, uInputMsg):
+        #print uInputMsg
         """Compute the distance of each coincidence from a given input."""
+        coinc = np.array(uCoincidences, dtype=np.double)
+        input_msg = np.array(uInputMsg, dtype=np.double)
 
-        distances = np.sqrt(np.sum(np.power(uCoincidences - uInputMsg, 2), axis=1))
+        distances = np.sqrt(np.sum(np.power(coinc - input_msg, 2), 
+                                   axis=1))
             
         ## find the minimum
         k = np.argmin(distances)
@@ -218,14 +222,14 @@ class OutputSpatialPooler(SpatialPooler):
         input_msg = uNodeState['input_msg']
 
         if uFirstCoinc:
-            coincidences = np.array([compute_widx(input_msg)])
+            coincidences = np.array([compute_widx(input_msg)], dtype=np.uint8)
             k = 0
             
         else:
             coincidences = uNodeState['coincidences']
 
             (rows, cols) = coincidences.shape
-            new_coincidences = np.zeros((rows + 1, cols))
+            new_coincidences = np.zeros((rows + 1, cols), dtype=np.uint8)
             new_coincidences[:rows,:cols] = coincidences
             new_coincidences[rows,:] = compute_widx(input_msg)
             coincidences = new_coincidences
