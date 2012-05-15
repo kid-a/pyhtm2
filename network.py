@@ -164,6 +164,11 @@ class Node(Process):
 
             elif msg == "inference":
                 debug_print("Doing inference on node " + str(self.state['name']))
+                # if self.state['name'] == (0,0):
+                #     import profile
+                #     profile.runctx("self.strategy['inference_maker'].inference(self.state)", globals(), {'self':self,})
+                    
+                #else:
                 self.strategy['inference_maker'].inference(self.state)
                 # debug_print("Node " + str(self.state['name']) + " output message: " +\
                 #                 str(self.state['output_msg']))
@@ -451,6 +456,7 @@ class NodeStateHandler(object):
         """Clone a node's state. Despite of the method name it implements
         a shallow copy."""
         s = {}
+        s['input_msg'] = uNodeState['input_msg']
         s['coincidences'] = uNodeState['coincidences']
         s['temporal_groups'] = uNodeState['temporal_groups']
         s['PCG'] = uNodeState['PCG']
@@ -471,6 +477,7 @@ class OutputNodeStateHandler(NodeStateHandler):
         """Clone a node's state. Despite of the method name it implements
         a shallow copy."""
         s = {}
+        s['input_msg'] = uNodeState['input_msg']
         s['coincidences'] = uNodeState['coincidences']
         s['cls_prior_prob'] = uNodeState['cls_prior_prob']
         s['PCW'] = uNodeState['PCW']

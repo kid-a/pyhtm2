@@ -53,10 +53,11 @@ if __name__ == "__main__":
         sequences = usps.get_training_sequences(directory, uSeqCount=seq_count)
         
         print "Starting training..."
-        import profile
+        # import profile
         
-        profile.runctx('htm.train(sequences)', globals(), {'htm':htm,
-                                                           'sequences':sequences})
+        # profile.runctx('htm.train(sequences)', globals(), {'htm':htm,
+        #                                                    'sequences':sequences})
+        htm.train(sequences)
         
         print "Saving network on file..."
         try: os.mkdir("usps/" + directory)
@@ -88,10 +89,17 @@ if __name__ == "__main__":
 
     choice = int(raw_input())
 
+    t0 = time.time()
+
     print    
     print "*** Testing HTM ***"
     if choice == 1:
-        print htm.inference(read("data_sets/test/0/1.bmp"))
+        print htm.inference(read('data_sets/test/0/1.bmp'))
+        # import profile
+        # profile.runctx("htm.inference(read('data_sets/test/0/1.bmp'))", globals(),
+        #                {'htm': htm,
+        #                 'read' : read})
+        print "Completed in ", time.time() - t0, "seconds"
         
     elif choice == 2 or choice == 3 or choice == 4:
         if choice == 2: directory = USPS_TRAIN100_SET
@@ -117,6 +125,7 @@ if __name__ == "__main__":
         print "Total:", total
         print "Correct:", correct
         print "Correctness ratio:", correct/float(total)
+        print "Completed in ", time.time() - t0, "seconds"
 
     else:
         exit(0)
