@@ -147,7 +147,7 @@ class TemporalPooler(object):
         params['max_group_size'] = uNodeState['max_group_size']
                 
         ## make TAM symmetric
-        norm_TAM = utils.make_symmetric(TAM)
+        norm_TAM = utils.make_symmetric(np.array(TAM, dtype=np.double))
         
         ## normalize the TAM
         norm_TAM = np.nan_to_num(utils.normalize_over_rows(norm_TAM))

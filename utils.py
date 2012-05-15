@@ -6,7 +6,7 @@ def inc_rows_cols(array):
     """ Adds one row and one column to a given array.
     Fills new fields with zeros."""
     (rows, cols) = array.shape
-    new_array = np.zeros((rows + 1, cols + 1))
+    new_array = np.zeros((rows + 1, cols + 1), dtype=array.dtype)
     new_array[:rows,:cols] = array
 
     del array

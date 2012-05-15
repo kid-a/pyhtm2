@@ -78,7 +78,7 @@ class SpatialPooler(object):
             coincidences = np.array([compute_widx(input_msg)], dtype=np.uint8)
             k = 0
             seen = np.array([1])
-            TAM = np.array([[0]])
+            TAM = np.array([[0]], dtype=np.uint16)
             
         else:
             coincidences = uNodeState['coincidences']
@@ -152,7 +152,7 @@ class EntrySpatialPooler(SpatialPooler):
             coincidences = np.array([input_msg], dtype=np.uint8)
             k = 0
             seen = np.array([1])
-            TAM = np.array([[0]])
+            TAM = np.array([[0]], dtype=np.uint16)
             
         else:
             coincidences = uNodeState['coincidences']
@@ -188,6 +188,7 @@ class EntrySpatialPooler(SpatialPooler):
         """Compute the distance of each coincidence from a given input."""
         coinc = np.array(uCoincidences, dtype=np.double)
         input_msg = np.array(uInputMsg, dtype=np.double)
+        
 
         distances = np.sqrt(np.sum(np.power(coinc - input_msg, 2), 
                                    axis=1))
