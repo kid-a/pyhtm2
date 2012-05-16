@@ -68,14 +68,15 @@ def remove_adjlist(node, adjlist):
 class TemporalPooler(object):
     def greedy_temporal_clustering(self, uTC, uTAM, uParams):
         """Implements the greedy temporal clustering algorithm."""
-        graph = tam2adjlist(uTAM)
+        #graph = tam2adjlist(uTAM)
+        (coinc_count, coinc_count) = uTAM.shape
         tc = tc2dict(uTC)
-
         partition = []
+        assigned = []
 
         max_group_size = uParams['max_group_size']
         
-        while len(graph) > 0:
+        while len(assigned) < coinc_count:
             (k, tc) = self.pop_highest_coincidence(tc)
             omega = set([k])
             unprocessed = [k]
@@ -83,7 +84,7 @@ class TemporalPooler(object):
                         
             while len(unprocessed) > 0 and len(processed) < max_group_size:
                 k = unprocessed[0] ## pick an unprocessed node
-                most_connected = self.top_most_connected(graph, k, uParams)
+                most_connected = self.top_most_connected(uTAM, k, assigned, uParams)
                 omega = omega.union(most_connected)
                 
                 processed.append(k)
@@ -92,7 +93,8 @@ class TemporalPooler(object):
                 unprocessed = list(set(unprocessed).difference(set(processed)))
                            
             for n in omega:
-                remove_adjlist(n, graph)
+                assigned.append(n)
+                #remove_adjlist(n, graph)
                 remove_tc(n, tc)
             
             partition.append(list(omega))
@@ -112,19 +114,26 @@ class TemporalPooler(object):
             
             return (k, uTC)
 
-    def top_most_connected(self, uGraph, uSource, uParams):
+    def top_most_connected(self, uTAM, uSource, uAssigned, uParams):
         """Returns the top-most-connected nodes to the given source."""
         most_connected = []
-        neighbours = uGraph[uSource]
+        edge_weights = uTAM[uSource]
+        
+        adjlist = []
+        for j in range(len(edge_weights)):
+            if uSource == j: continue
+            if j in uAssigned: continue
+            if edge_weights[j] > 0:
+                adjlist.append((j, edge_weights[j]))
         
         top_neighbours = uParams['top_neighbours']
         
-        if len(neighbours) < top_neighbours:
-            return map(lambda x : x[0], neighbours)
+        if len(adjlist) < top_neighbours:
+            return map(lambda x : x[0], adjlist)
         
         else:
-            sorted_neighbours = sorted(neighbours, key=lambda x : x[1], reverse=True)
-            return map(lambda x : x[0], sorted_neighbours[:top_neighbours])
+            sorted_adjlist = sorted(adjlist, key=lambda x : x[1], reverse=True)
+            return map(lambda x : x[0], sorted_adjlist[:top_neighbours])
 
     def compute_PCG(self, uCoincidencePriors, uTemporalGroups):
         """Compute the PCG matrix."""

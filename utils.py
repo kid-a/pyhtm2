@@ -69,8 +69,6 @@ if __name__ == "__main__":
     p = temporal_clustering.TemporalPooler()
     p.greedy_temporal_clustering(TC, b, {'max_group_size' : 10,
                                          'top_neighbours' : 3})
-                                         
-    
     
 
     # profile.runctx("make_symmetric(np.array(a, dtype=np.double))",
