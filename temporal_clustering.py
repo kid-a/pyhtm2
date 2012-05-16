@@ -123,8 +123,8 @@ class TemporalPooler(object):
             return map(lambda x : x[0], neighbours)
         
         else:
-            sorted_neighbours = sorted(neighbours, key=lambda x : x[1])
-            return map(lambda x : x[0], neighbours[:top_neighbours])
+            sorted_neighbours = sorted(neighbours, key=lambda x : x[1], reverse=True)
+            return map(lambda x : x[0], sorted_neighbours[:top_neighbours])
 
     def compute_PCG(self, uCoincidencePriors, uTemporalGroups):
         """Compute the PCG matrix."""
