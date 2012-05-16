@@ -98,6 +98,8 @@ class TemporalPooler(object):
                 remove_tc(n, tc)
             
             partition.append(list(omega))
+            
+        print sum(assigned)
         
         return partition
     
@@ -127,12 +129,13 @@ class TemporalPooler(object):
                 adjlist.append((j, edge_weights[j]))
         
         top_neighbours = uParams['top_neighbours']
+
+        sorted_adjlist = sorted(adjlist, key=lambda x : x[1], reverse=True)
         
-        if len(adjlist) < top_neighbours:
-            return map(lambda x : x[0], adjlist)
-        
+        if len(adjlist) <= top_neighbours:
+            return map(lambda x : x[0], sorted_adjlist)
+
         else:
-            sorted_adjlist = sorted(adjlist, key=lambda x : x[1], reverse=True)
             return map(lambda x : x[0], sorted_adjlist[:top_neighbours])
 
     def compute_PCG(self, uCoincidencePriors, uTemporalGroups):

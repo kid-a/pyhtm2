@@ -51,18 +51,20 @@ if __name__ == "__main__":
     import profile
     import gc
 
-    a = np.random.randint(100, size=(15000, 15000))
+    N = 100
+
+    a = np.random.randint(100, size=(N, N))
     a = np.array(a, dtype=np.uint16)
 
     a = make_symmetric(np.array(a))
     a = normalize_over_rows(np.array(a, dtype=np.float32))
     b = np.nan_to_num(a)
 
-    seen = np.random.randint(600, size=(1, 15000))
+    seen = np.random.randint(600, size=(1, N))
     seen = np.array(seen, dtype=np.float32)
     coinc_priors = seen / float(seen.sum())
         
-    TC = np.dot(coinc_priors, b)
+    TC = (np.dot(coinc_priors, b)).flatten()
     
     import temporal_clustering
     
