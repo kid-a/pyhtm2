@@ -21,21 +21,23 @@ def transpose(array):
 def normalize_over_rows(array):
     """Normalize a vector such that the elements of each row sum up to 1."""
     return np.transpose(
-        np.transpose(array) / np.sum(array, axis=1, dtype=np.double))
+        np.transpose(array) / np.sum(array, axis=1, dtype=np.float32))
 
 
 def normalize_over_cols(array):
     """Normalize a vector such that the elements of each column sum up to 1."""
-    return array / np.sum(array, axis=0, dtype=np.double)
+    return array / np.sum(array, axis=0, dtype=np.float32)
 
 
 def make_symmetric(array):
     """Make an array symmetric summing up its lower and its upper parts."""
-    (size, size) = array.shape
-    return \
-        np.tril( np.tril(array, -1) + np.transpose(np.triu(array, 1)), -1) + \
-        np.triu( np.transpose(np.tril(array, -1)) + np.triu(array, 1),  1) + \
-        (array * np.eye(size))
+    return array + array.T - np.diag(array.diagonal())
+
+    # return \
+    #     np.tril( np.tril(array, -1) + np.transpose(np.triu(array, 1)), -1) + \
+    #     np.triu( np.transpose(np.tril(array, -1)) + np.triu(array, 1),  1) + \
+    #     (array * np.eye(size))
+
 
 def resize(array, new_dims):
     """Resize an array, guaranteeing that elements stays in the same position."""
@@ -46,22 +48,47 @@ def resize(array, new_dims):
 
 
 if __name__ == "__main__":
-    ## profile inc_rows_cols
     import profile
+    import gc
 
-    def enlarge_matrix():
-        a = np.random.random((12000, 4))
-        for i in range(400):
-            a = inc_rows_cols(a)
+    a = np.random.randint(100, size=(15000, 15000))
+    a = np.array(a, dtype=np.uint16)
+
+    a = make_symmetric(np.array(a))
+    a = normalize_over_rows(np.array(a, dtype=np.float32))
+    b = np.nan_to_num(a)
+
+    seen = np.random.randint(600, size=(1, 15000))
+    seen = np.array(seen, dtype=np.float32)
+    coinc_priors = seen / float(seen.sum())
+        
+    TC = np.dot(coinc_priors, b)
     
-    profile.run("enlarge_matrix()")
+    import temporal_clustering
     
+    p = temporal_clustering.TemporalPooler()
+    p.greedy_temporal_clustering(TC, b, {'max_group_size' : 10,
+                                         'top_neighbours' : 3})
+                                         
+    
+    
+
+    # profile.runctx("make_symmetric(np.array(a, dtype=np.double))",
+    #                globals(),
+    #                {'make_symmetric' : make_symmetric,
+    #                 'np' : np,
+    #                 'a' : a })
     
     
 
 
 
+    ## profile inc_rows_cols
+    # import profile
 
+    # def enlarge_matrix():
+    #     a = np.random.random((12000, 4))
+    #     for i in range(400):
+    #         a = inc_rows_cols(a)
     
-    
-    
+    # profile.run("enlarge_matrix()")

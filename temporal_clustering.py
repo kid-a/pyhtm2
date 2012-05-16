@@ -70,6 +70,7 @@ class TemporalPooler(object):
         """Implements the greedy temporal clustering algorithm."""
         graph = tam2adjlist(uTAM)
         tc = tc2dict(uTC)
+
         partition = []
 
         max_group_size = uParams['max_group_size']
@@ -147,13 +148,13 @@ class TemporalPooler(object):
         params['max_group_size'] = uNodeState['max_group_size']
                 
         ## make TAM symmetric
-        norm_TAM = utils.make_symmetric(np.array(TAM, dtype=np.double))
+        norm_TAM = utils.make_symmetric(TAM)
         
         ## normalize the TAM
         norm_TAM = np.nan_to_num(utils.normalize_over_rows(norm_TAM))
         
         ## compute coincidence priors
-        coincidence_priors = seen / float(seen.sum())
+        coincidence_priors = np.array(seen, dtype=np.float32) / float(seen.sum())
         
         ## compute the temporal connections
         TC = np.dot(coincidence_priors, norm_TAM)
