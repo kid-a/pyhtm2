@@ -89,7 +89,7 @@ class TemporalPooler(object):
                         
             while len(unprocessed) > 0 and len(processed) < max_group_size:
                 k = unprocessed[0] ## pick an unprocessed node
-                most_connected = self.top_most_connected(uTAM, k, assigned, uParams)
+                most_connected = self.top_most_connected(uTAM, k, uParams)
                 omega = omega.union(most_connected)
                 
                 processed.append(k)
@@ -137,7 +137,7 @@ class TemporalPooler(object):
             
             return (k, uTC)
 
-    def top_most_connected(self, uTAM, uSource, uAssigned, uParams):
+    def top_most_connected(self, uTAM, uSource, uParams):
         """Returns the top-most-connected nodes to the given source."""
         print "processing node", uSource
         most_connected = []
@@ -158,7 +158,7 @@ class TemporalPooler(object):
         # #     indices.remove(node)
 
         adjlist = zip(indices, adjlist)
-        adjlist = [(x,y) for (x,y) in adjlist if y == 0]
+        adjlist = [(x,y) for (x,y) in adjlist if y != 0]
         adjlist = [(x,y) for (x,y) in adjlist if x != uSource]
 
         #adjlist = filter(lambda x : if x[0] == Source return
