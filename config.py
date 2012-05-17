@@ -2,7 +2,7 @@ usps_net = [
     ## layer 0
     {'shape' : (4,4),
      'sigma' : 150.0,
-     'distance_thr' : 225.0,
+     'distance_thr' : 224.0,
      'node_sharing' : True,
      'transition_memory_size' : 2,
      'top_neighbours' : 3,
