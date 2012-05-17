@@ -111,6 +111,7 @@ class TemporalPooler(object):
                            
             for n in omega:
                 assigned.append(n)
+                uTAM[:,n] = np.zeros_like(uTAM[:,n])
                 #remove_adjlist(n, graph)
                 #uTAM.mask[n,n] = True
                 remove_tc(n, tc)
@@ -157,7 +158,7 @@ class TemporalPooler(object):
         # #     indices.remove(node)
 
         adjlist = zip(indices, adjlist)
-        adjlist = [(x,y) for (x,y) in adjlist if x not in uAssigned]
+        adjlist = [(x,y) for (x,y) in adjlist if y == 0]
         adjlist = [(x,y) for (x,y) in adjlist if x != uSource]
 
         #adjlist = filter(lambda x : if x[0] == Source return

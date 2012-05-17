@@ -52,7 +52,7 @@ if __name__ == "__main__":
     import gc
     import time
 
-    N = 15000
+    N = 100
 
     a = np.random.randint(100, size=(N, N))
     a = np.array(a, dtype=np.uint16)
