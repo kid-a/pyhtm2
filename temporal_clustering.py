@@ -81,6 +81,12 @@ class TemporalPooler(object):
             omega = set([k])
             unprocessed = [k]
             processed = []
+            
+            # print "k:", k
+            # print "unprocessed:", unprocessed
+            # print "processed:", processed
+            # print "omega:", omega
+            # print
                         
             while len(unprocessed) > 0 and len(processed) < max_group_size:
                 k = unprocessed[0] ## pick an unprocessed node
@@ -89,8 +95,20 @@ class TemporalPooler(object):
                 
                 processed.append(k)
                 unprocessed.remove(k)
-                unprocessed.extend(most_connected)
-                unprocessed = list(set(unprocessed).difference(set(processed)))
+                for n in most_connected:
+                    if n not in unprocessed and n not in processed:
+                        unprocessed.append(n)
+                    
+                #unprocessed.extend(most_connected)
+
+                #unprocessed = list(set(unprocessed).difference(set(processed)))
+                ## maybe here the order is not respected
+                # print "k:", k
+                # print "most_connected:", most_connected
+                # print "unprocessed:", unprocessed
+                # print "processed:", processed
+                # print "omega:", omega
+                # print
                            
             for n in omega:
                 assigned.append(n)
@@ -158,6 +176,10 @@ class TemporalPooler(object):
         params = {}
         params['top_neighbours'] = uNodeState['top_neighbours']
         params['max_group_size'] = uNodeState['max_group_size']
+        
+        ## check whether the last coincidence added was a temporal gap
+        ## and fix the TAM
+        ## if np.all(TAM[-1] == 0): TAM[-1][-1] = 1
                 
         ## make TAM symmetric
         norm_TAM = utils.make_symmetric(TAM)
@@ -184,4 +206,20 @@ class TemporalPooler(object):
 
 
 if __name__ == "__main__":
-    pass
+    p = TemporalPooler()
+    
+    TAM = np.array([[0, 0.5, 0, 0.3, 0.6, 0],
+                    [0, 0, 0.2, 0, 0, 0],
+                    [0, 0.4, 0, 0, 0, 0],
+                    [0, 0.1, 0, 0, 0.4, 0.3],
+                    [0, 0, 0, 0, 0, 0.4],
+                    [0, 0, 0.1, 0.2, 0, 0]])
+
+    TC = np.array([0.4, 0.3, 0.5, 0.2, 0.6, 0.7])
+    
+    part = p.greedy_temporal_clustering(TC, TAM, {'top_neighbours' : 2,
+                                                  'max_group_size' : 2})
+    
+    print part
+    
+
