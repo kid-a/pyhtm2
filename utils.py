@@ -50,8 +50,9 @@ def resize(array, new_dims):
 if __name__ == "__main__":
     import profile
     import gc
+    import time
 
-    N = 100
+    N = 15000
 
     a = np.random.randint(100, size=(N, N))
     a = np.array(a, dtype=np.uint16)
@@ -68,9 +69,22 @@ if __name__ == "__main__":
     
     import temporal_clustering
     
+    t0 = time.time()
+
     p = temporal_clustering.TemporalPooler()
+    # profile.runctx("p.greedy_temporal_clustering(TC, b, params)",
+    #                globals(),
+    #                {'p' : p,
+    #                 'TC' : TC,
+    #                 'b' : b,
+    #                 'params' : {'max_group_size' : 10,
+    #                             'top_neighbours' : 3}
+    #                 })
+
     p.greedy_temporal_clustering(TC, b, {'max_group_size' : 10,
                                          'top_neighbours' : 3})
+    
+    print t0 - time.time()
     
 
     # profile.runctx("make_symmetric(np.array(a, dtype=np.double))",

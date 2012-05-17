@@ -59,8 +59,7 @@ def remove_adjlist(node, adjlist):
     for n in adjlist:
         for (t,w) in adjlist[n]:
             if t == node:
-                adjlist[n].remove((t,w))
-    
+                adjlist[n].remove((t,w))    
 
 ## -----------------------------------------------------------------------------
 ## TemporalPooler Class
@@ -113,8 +112,11 @@ class TemporalPooler(object):
             for n in omega:
                 assigned.append(n)
                 #remove_adjlist(n, graph)
+                #uTAM.mask[n,n] = True
                 remove_tc(n, tc)
-            
+
+            #np.ma.mask_cols(uTam)
+
             partition.append(list(omega))
             
         print sum(assigned)
@@ -136,15 +138,35 @@ class TemporalPooler(object):
 
     def top_most_connected(self, uTAM, uSource, uAssigned, uParams):
         """Returns the top-most-connected nodes to the given source."""
+        print "processing node", uSource
         most_connected = []
         edge_weights = uTAM[uSource]
-        
-        adjlist = []
-        for j in range(len(edge_weights)):
-            if uSource == j: continue
-            if j in uAssigned: continue
-            if edge_weights[j] > 0:
-                adjlist.append((j, edge_weights[j]))
+        # edge_indices = (np.ma.nonzero(uTAM[uSource])[0]).tolist()
+        # edge_weights = (uTAM[np.ma.nonzero(uTAM)]).tolist()
+
+        # adjlist = zip(edge_indices, edge_weights)
+        adjlist = edge_weights.tolist()
+        indices = range(len(adjlist))
+
+        # # del adjlist[uSource]
+        # # indices.remove(uSource)
+
+        # # for node in uAssigned:
+        # #     del adjlist[node]
+        # #     #adjlist.remove(node)
+        # #     indices.remove(node)
+
+        adjlist = zip(indices, adjlist)
+        adjlist = [(x,y) for (x,y) in adjlist if x not in uAssigned]
+        adjlist = [(x,y) for (x,y) in adjlist if x != uSource]
+
+        #adjlist = filter(lambda x : if x[0] == Source return
+    
+        # for j in range(len(edge_weights)):
+        #     if uSource == j: continue
+        #     if j in uAssigned: continue
+        #     if edge_weights[j] > 0:
+        #         adjlist.append((j, edge_weights[j]))
         
         top_neighbours = uParams['top_neighbours']
 
@@ -186,6 +208,10 @@ class TemporalPooler(object):
         
         ## normalize the TAM
         norm_TAM = np.nan_to_num(utils.normalize_over_rows(norm_TAM))
+        
+        # ## transform TAM into a masked array
+        # norm_TAM = np.ma.masked_array(norm_TAM)
+        # norm_TAM.mask = np.ma.make_mask_none(norm_TAM.shape)
         
         ## compute coincidence priors
         coincidence_priors = np.array(seen, dtype=np.float32) / float(seen.sum())
