@@ -14,7 +14,7 @@ def compute_widx(msg):
     """Compute a widx, out of an input message."""
     widx = []
     for m in msg: widx.append(np.argmax(m))
-    return np.array(widx, dtype=np.uint8)
+    return np.array(widx, dtype=np.uint16)
 
 
 ## -----------------------------------------------------------------------------
@@ -75,7 +75,7 @@ class SpatialPooler(object):
         input_msg = uNodeState['input_msg']
 
         if uFirstCoinc:
-            coincidences = np.array([compute_widx(input_msg)], dtype=np.uint8)
+            coincidences = np.array([compute_widx(input_msg)], dtype=np.uint16)
             k = 0
             seen = np.array([1])
             TAM = np.array([[0]], dtype=np.uint16)
@@ -86,7 +86,7 @@ class SpatialPooler(object):
             seen = uNodeState['seen']
 
             (rows, cols) = coincidences.shape
-            new_coincidences = np.zeros((rows + 1, cols), dtype=np.uint8)
+            new_coincidences = np.zeros((rows + 1, cols), dtype=np.uint16)
             new_coincidences[:rows,:cols] = coincidences
             new_coincidences[rows,:] = compute_widx(input_msg)
             coincidences = new_coincidences
@@ -149,7 +149,7 @@ class EntrySpatialPooler(SpatialPooler):
         input_msg = uNodeState['input_msg']
 
         if uFirstCoinc:
-            coincidences = np.array([input_msg], dtype=np.uint8)
+            coincidences = np.array([input_msg], dtype=np.uint16)
             k = 0
             seen = np.array([1])
             TAM = np.array([[0]], dtype=np.uint16)
@@ -160,7 +160,7 @@ class EntrySpatialPooler(SpatialPooler):
             TAM = uNodeState['TAM']
             
             (rows, cols) = coincidences.shape
-            new_coincidences = np.zeros((rows + 1, cols), dtype=np.uint8)
+            new_coincidences = np.zeros((rows + 1, cols), dtype=np.uint16)
             new_coincidences[:rows,:cols] = coincidences
             new_coincidences[rows,:] = input_msg
             coincidences = new_coincidences
@@ -223,14 +223,14 @@ class OutputSpatialPooler(SpatialPooler):
         input_msg = uNodeState['input_msg']
 
         if uFirstCoinc:
-            coincidences = np.array([compute_widx(input_msg)], dtype=np.uint8)
+            coincidences = np.array([compute_widx(input_msg)], dtype=np.uint16)
             k = 0
             
         else:
             coincidences = uNodeState['coincidences']
 
             (rows, cols) = coincidences.shape
-            new_coincidences = np.zeros((rows + 1, cols), dtype=np.uint8)
+            new_coincidences = np.zeros((rows + 1, cols), dtype=np.uint16)
             new_coincidences[:rows,:cols] = coincidences
             new_coincidences[rows,:] = compute_widx(input_msg)
             coincidences = new_coincidences
@@ -268,6 +268,7 @@ class OutputSpatialPooler(SpatialPooler):
 
 if __name__ == "__main__":
     ## profile inc_rows_cols
+
     import profile
 
     p = IntermediateSpatialPooler()

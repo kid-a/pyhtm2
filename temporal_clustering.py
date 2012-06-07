@@ -59,8 +59,7 @@ def remove_adjlist(node, adjlist):
     for n in adjlist:
         for (t,w) in adjlist[n]:
             if t == node:
-                adjlist[n].remove((t,w))
-    
+                adjlist[n].remove((t,w))    
 
 ## -----------------------------------------------------------------------------
 ## TemporalPooler Class
@@ -68,33 +67,60 @@ def remove_adjlist(node, adjlist):
 class TemporalPooler(object):
     def greedy_temporal_clustering(self, uTC, uTAM, uParams):
         """Implements the greedy temporal clustering algorithm."""
-        graph = tam2adjlist(uTAM)
+        #graph = tam2adjlist(uTAM)
+        (coinc_count, coinc_count) = uTAM.shape
         tc = tc2dict(uTC)
         partition = []
+        assigned = []
 
         max_group_size = uParams['max_group_size']
         
-        while len(graph) > 0:
+        while len(assigned) < coinc_count:
             (k, tc) = self.pop_highest_coincidence(tc)
             omega = set([k])
             unprocessed = [k]
             processed = []
+            
+            # print "k:", k
+            # print "unprocessed:", unprocessed
+            # print "processed:", processed
+            # print "omega:", omega
+            # print
                         
             while len(unprocessed) > 0 and len(processed) < max_group_size:
                 k = unprocessed[0] ## pick an unprocessed node
-                most_connected = self.top_most_connected(graph, k, uParams)
+                most_connected = self.top_most_connected(uTAM, k, uParams)
                 omega = omega.union(most_connected)
                 
                 processed.append(k)
                 unprocessed.remove(k)
-                unprocessed.extend(most_connected)
-                unprocessed = list(set(unprocessed).difference(set(processed)))
+                for n in most_connected:
+                    if n not in unprocessed and n not in processed:
+                        unprocessed.append(n)
+                    
+                #unprocessed.extend(most_connected)
+
+                #unprocessed = list(set(unprocessed).difference(set(processed)))
+                ## maybe here the order is not respected
+                # print "k:", k
+                # print "most_connected:", most_connected
+                # print "unprocessed:", unprocessed
+                # print "processed:", processed
+                # print "omega:", omega
+                # print
                            
             for n in omega:
-                remove_adjlist(n, graph)
+                assigned.append(n)
+                uTAM[:,n] = np.zeros_like(uTAM[:,n])
+                #remove_adjlist(n, graph)
+                #uTAM.mask[n,n] = True
                 remove_tc(n, tc)
-            
+
+            #np.ma.mask_cols(uTam)
+
             partition.append(list(omega))
+            
+        print sum(assigned)
         
         return partition
     
@@ -111,19 +137,47 @@ class TemporalPooler(object):
             
             return (k, uTC)
 
-    def top_most_connected(self, uGraph, uSource, uParams):
+    def top_most_connected(self, uTAM, uSource, uParams):
         """Returns the top-most-connected nodes to the given source."""
+        print "processing node", uSource
         most_connected = []
-        neighbours = uGraph[uSource]
+        edge_weights = uTAM[uSource]
+        # edge_indices = (np.ma.nonzero(uTAM[uSource])[0]).tolist()
+        # edge_weights = (uTAM[np.ma.nonzero(uTAM)]).tolist()
+
+        # adjlist = zip(edge_indices, edge_weights)
+        adjlist = edge_weights.tolist()
+        indices = range(len(adjlist))
+
+        # # del adjlist[uSource]
+        # # indices.remove(uSource)
+
+        # # for node in uAssigned:
+        # #     del adjlist[node]
+        # #     #adjlist.remove(node)
+        # #     indices.remove(node)
+
+        adjlist = zip(indices, adjlist)
+        adjlist = [(x,y) for (x,y) in adjlist if y != 0]
+        adjlist = [(x,y) for (x,y) in adjlist if x != uSource]
+
+        #adjlist = filter(lambda x : if x[0] == Source return
+    
+        # for j in range(len(edge_weights)):
+        #     if uSource == j: continue
+        #     if j in uAssigned: continue
+        #     if edge_weights[j] > 0:
+        #         adjlist.append((j, edge_weights[j]))
         
         top_neighbours = uParams['top_neighbours']
+
+        sorted_adjlist = sorted(adjlist, key=lambda x : x[1], reverse=True)
         
-        if len(neighbours) < top_neighbours:
-            return map(lambda x : x[0], neighbours)
-        
+        if len(adjlist) <= top_neighbours:
+            return map(lambda x : x[0], sorted_adjlist)
+
         else:
-            sorted_neighbours = sorted(neighbours, key=lambda x : x[1])
-            return map(lambda x : x[0], neighbours[:top_neighbours])
+            return map(lambda x : x[0], sorted_adjlist[:top_neighbours])
 
     def compute_PCG(self, uCoincidencePriors, uTemporalGroups):
         """Compute the PCG matrix."""
@@ -145,15 +199,23 @@ class TemporalPooler(object):
         params = {}
         params['top_neighbours'] = uNodeState['top_neighbours']
         params['max_group_size'] = uNodeState['max_group_size']
+        
+        ## check whether the last coincidence added was a temporal gap
+        ## and fix the TAM
+        ## if np.all(TAM[-1] == 0): TAM[-1][-1] = 1
                 
         ## make TAM symmetric
-        norm_TAM = utils.make_symmetric(np.array(TAM, dtype=np.double))
+        norm_TAM = utils.make_symmetric(TAM)
         
         ## normalize the TAM
         norm_TAM = np.nan_to_num(utils.normalize_over_rows(norm_TAM))
         
+        # ## transform TAM into a masked array
+        # norm_TAM = np.ma.masked_array(norm_TAM)
+        # norm_TAM.mask = np.ma.make_mask_none(norm_TAM.shape)
+        
         ## compute coincidence priors
-        coincidence_priors = seen / float(seen.sum())
+        coincidence_priors = np.array(seen, dtype=np.float32) / float(seen.sum())
         
         ## compute the temporal connections
         TC = np.dot(coincidence_priors, norm_TAM)
@@ -171,4 +233,20 @@ class TemporalPooler(object):
 
 
 if __name__ == "__main__":
-    pass
+    p = TemporalPooler()
+    
+    TAM = np.array([[0, 0.5, 0, 0.3, 0.6, 0],
+                    [0, 0, 0.2, 0, 0, 0],
+                    [0, 0.4, 0, 0, 0, 0],
+                    [0, 0.1, 0, 0, 0.4, 0.3],
+                    [0, 0, 0, 0, 0, 0.4],
+                    [0, 0, 0.1, 0.2, 0, 0]])
+
+    TC = np.array([0.4, 0.3, 0.5, 0.2, 0.6, 0.7])
+    
+    part = p.greedy_temporal_clustering(TC, TAM, {'top_neighbours' : 2,
+                                                  'max_group_size' : 2})
+    
+    print part
+    
+

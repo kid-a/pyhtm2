@@ -90,7 +90,6 @@ def make_training_seq(uImage, uLayer, uWindowSize=(4,4), uClass=None):
         ## horizontal scan
         horizontal_sequence.reverse()
 
-        k = 0
         for i in vertical_sequence:
             for j in horizontal_sequence:
                 
@@ -99,9 +98,6 @@ def make_training_seq(uImage, uLayer, uWindowSize=(4,4), uClass=None):
 
                 patch = image[i:(i + uWindowSize[0]), 
                               j:(j + uWindowSize[1])]
-
-                save(patch, "img"+ str(k)+".bmp")
-                k+=1
                 
                 img = WHITE * np.ones((orig_rows, orig_cols), dtype=np.uint8)
                 img[:uWindowSize[0],:uWindowSize[1]] = patch
@@ -130,9 +126,6 @@ def make_training_seq(uImage, uLayer, uWindowSize=(4,4), uClass=None):
                 
                 patch = image[i:(i + uWindowSize[0]), 
                               j:(j + uWindowSize[1])]
-
-                save(patch, "img"+ str(k)+".bmp")
-                k+=1
 
                 img = WHITE * np.ones((orig_rows, orig_cols), dtype=np.uint8)
                 img[:uWindowSize[0],:uWindowSize[1]] = patch

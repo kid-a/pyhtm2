@@ -282,15 +282,18 @@ class Layer(object):
                     self.pipes[i][j].send(("set_state", state))
 
         else:
-            ## start each node's finalization procedure
+            ## finalize each node separately
+            ## finalization is not done in parallel
+            ## due to memory issues
             for i in range(len(self.nodes)):
                 for j in range(len(self.nodes[i])):
                     self.pipes[i][j].send("finalize")
-
-            ## wait for the finalization to be completed
-            for i in range(len(self.nodes)):
-                for j in range(len(self.nodes[i])):
                     self.pipes[i][j].recv()
+
+            # ## wait for the finalization to be completed
+            # for i in range(len(self.nodes)):
+            #     for j in range(len(self.nodes[i])):
+            #         self.pipes[i][j].recv()
 
     def inference(self):
         """Perform inference on the current input."""
