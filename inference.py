@@ -11,8 +11,7 @@ def input_msg2array(uInputMsg):
     array = np.zeros(shape)
     
     for i in range(shape[0]):
-        for j in range(len(uInputMsg[i])):
-            array[i,j] = uInputMsg[i][j]
+        array[i,0:len(uInputMsg[i])] = uInputMsg[i]
             
     return array
 
@@ -37,22 +36,18 @@ class InferenceMaker(object):
         input_array = input_msg2array(uCurrentInput)
         
         (rows, cols) = uCoincidences.shape
-        y = np.array([[]])
 
-        for i in range(rows):
-            
-            # selected_coincidences = np.array([])
-
-            # for j in range(cols):
-            #     selected_coincidences = \
-            #         np.append(selected_coincidences, 
-            #                   uCurrentInput[j][uCoincidences[i,j]])
-            mask = make_mask(uCoincidences[i], input_array)
-            selected_components = select_components(input_array, mask)
-
-            y = np.append(y, np.prod(selected_components))
-            
-        return np.array([y])    
+        ## prepare the vector of indices
+        coinc_mult = uCoincidences + \
+            np.array(range(input_array.shape[0])) * input_array.shape[1]
+        
+        ## now, apply the vector of indices to the input vector
+        r = (np.reshape(input_array, (1, input_array.size))[0])[coinc_mult]
+        
+        ## apply the product to each row
+        y = np.prod(r, axis=1)
+        
+        return np.array([y])
     
     def dens_over_matrix(self, uY, uMatrix):
         return np.dot(uY, uMatrix)
