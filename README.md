@@ -1,3 +1,7 @@
-to do:
+to do
+=====
 
-* perform training on the whole data set
+* implement backprop
+* test on other datasets
+* implement other kinds of output node
+* vectorize as much code as possible
